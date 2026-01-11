@@ -19,4 +19,6 @@ jobs:
       uses: leanprover-community/lean-release-tag@v1
       with:
         do-release: true
+        before: ${{ github.event.before != '0000000000000000000000000000000000000000' && github.event.before || github.sha }}
+        after: ${{ github.sha }}
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
