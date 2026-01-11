@@ -100,9 +100,9 @@ def main() -> None:
         add_xnor(clauses, p2, sigma(a, b, d), sigma(a, c, e))
         add_xnor(clauses, p3, sigma(a, b, e), sigma(a, c, d))
 
-        # not all equal: exclude TTT and FFF
-        clauses.append([p1, p2, p3])
-        clauses.append([-p1, -p2, -p3])
+        # not all equal for (p1, ¬p2, p3): exclude TTT and FFF
+        clauses.append([p1, -p2, p3])
+        clauses.append([-p1, p2, -p3])
 
     # AvoidsAlternating: for every injection f : Fin n ↪ Fin N, not(IsAlternating(reindex σ f))
     # Encode ¬(∀ distinct i,j,k : σ(f(i),f(j),f(k)) == alt(i,j,k)) as one big mismatch clause.

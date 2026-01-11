@@ -106,7 +106,7 @@ def signMul (x y : Bool) : Bool :=
     (This statement only makes sense when all the triples mentioned are distinct.) -/
 def GPRel {N : ℕ} (ot : ErdosSzekeres.OrderType N) (a b c d e : Fin N) : Prop :=
   let p1 := signMul (ot.σ a b c) (ot.σ a d e)
-  let p2 := signMul (ot.σ a b d) (ot.σ a c e)
+  let p2 := !(signMul (ot.σ a b d) (ot.σ a c e))
   let p3 := signMul (ot.σ a b e) (ot.σ a c d)
   ¬ (p1 = p2 ∧ p2 = p3)
 
