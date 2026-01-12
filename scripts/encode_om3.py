@@ -151,6 +151,81 @@ def canonical_rotate_min(seq: List[int]) -> List[int]:
     return seq[r:] + seq[:r]
 
 
+def find_alternating_orders_batch_large(
+    N: int,
+    n: int,
+    sigma_var,
+    assign: Dict[int, bool],
+    limit: int,
+    blocked_orders: set[Tuple[int, ...]],
+) -> List[List[int]]:
+    # Precompute pos[a][b] bitmask of c with σ(a,b,c)=True.
+    pos = [[0] * N for _ in range(N)]
+    for a in range(N):
+        for b in range(N):
+            if a == b:
+                continue
+            m = 0
+            for c in range(N):
+                if c == a or c == b:
+                    continue
+                v = sigma_var[(a, b, c)]
+                if assign.get(v, False):
+                    m |= (1 << c)
+            pos[a][b] = m
+
+    out: List[List[int]] = []
+    seen: set[Tuple[int, ...]] = set()
+
+    def emit(seq: List[int]) -> None:
+        if len(out) >= limit:
+            return
+        seq = canonical_rotate_min(seq)
+        key = tuple(seq)
+        if key in blocked_orders or key in seen:
+            return
+        seen.add(key)
+        out.append(seq)
+
+    def backtrack(seq: List[int], used: int, pair_mask: int) -> None:
+        if len(out) >= limit:
+            return
+        if len(seq) == n:
+            emit(seq)
+            return
+        cand = pair_mask & ~used
+        if cand.bit_count() < (n - len(seq)):
+            return
+        for x in iter_bits(cand):
+            new_used = used | (1 << x)
+            new_pair = pair_mask
+            for v in seq:
+                new_pair &= pos[v][x]
+                if new_pair == 0:
+                    break
+            else:
+                backtrack(seq + [x], new_used, new_pair)
+                if len(out) >= limit:
+                    return
+
+    for v0 in range(N):
+        used0 = 1 << v0
+        for v1 in range(N):
+            if v1 == v0:
+                continue
+            used1 = used0 | (1 << v1)
+            pair_mask = pos[v0][v1]
+            cand2 = pair_mask & ~used1
+            for v2 in iter_bits(cand2):
+                used2 = used1 | (1 << v2)
+                pair2 = pair_mask & pos[v0][v2] & pos[v1][v2]
+                backtrack([v0, v1, v2], used2, pair2)
+                if len(out) >= limit:
+                    return out
+
+    return out
+
+
 def find_alternating_sets_small(
     N: int,
     n: int,
@@ -331,8 +406,10 @@ def main() -> None:
             if N <= 10:
                 seqs = find_alternating_sets_small(N, n, sigma_var, assign, blocked_sets, args.batch)
             else:
-                seq = find_alternating_sequence(N, n, sigma_var, assign)
-                seqs = [] if seq is None else [seq]
+                lim = args.batch if args.batch != 0 else 1
+                seqs = find_alternating_orders_batch_large(
+                    N, n, sigma_var, assign, lim, blocked_orders
+                )
 
             if not seqs:
                 print("SAT and no alternating subset found -> OM3Counterexample candidate")
