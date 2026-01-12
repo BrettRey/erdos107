@@ -76,6 +76,8 @@ def iter_bits(mask: int):
 def find_alternating_sequence(N: int, n: int, sigma_var, assign: Dict[int, bool]) -> List[int] | None:
     if N <= 10:
         for seq in itertools.permutations(range(N), n):
+            if seq[0] != min(seq):
+                continue
             ok = True
             for i in range(n):
                 for j in range(i + 1, n):
@@ -143,6 +145,48 @@ def find_alternating_sequence(N: int, n: int, sigma_var, assign: Dict[int, bool]
     return None
 
 
+def canonical_rotate_min(seq: List[int]) -> List[int]:
+    m = min(seq)
+    r = seq.index(m)
+    return seq[r:] + seq[:r]
+
+
+def find_alternating_sets_small(
+    N: int,
+    n: int,
+    sigma_var,
+    assign: Dict[int, bool],
+    blocked_sets: set[Tuple[int, ...]],
+    limit: int,
+) -> List[List[int]]:
+    out: List[List[int]] = []
+    seen: set[Tuple[int, ...]] = set()
+    for seq in itertools.permutations(range(N), n):
+        if seq[0] != min(seq):
+            continue
+        subset = tuple(sorted(seq))
+        if subset in blocked_sets or subset in seen:
+            continue
+        ok = True
+        for i in range(n):
+            for j in range(i + 1, n):
+                for k in range(j + 1, n):
+                    v = sigma_var[(seq[i], seq[j], seq[k])]
+                    if not assign.get(v, False):
+                        ok = False
+                        break
+                if not ok:
+                    break
+            if not ok:
+                break
+        if ok:
+            seen.add(subset)
+            out.append(list(seq))
+            if limit != 0 and len(out) >= limit:
+                break
+    return out
+
+
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--n", type=int, required=True)
@@ -152,6 +196,13 @@ def main() -> None:
     ap.add_argument("--acyclic", action="store_true")
     ap.add_argument("--lazy", action="store_true")
     ap.add_argument("--max-iters", type=int, default=500)
+    ap.add_argument("--block-set", action="store_true")
+    ap.add_argument(
+        "--batch",
+        type=int,
+        default=0,
+        help="Lazy mode: number of distinct alternating n-sets to block per SAT model (0 = block all found).",
+    )
     args = ap.parse_args()
 
     n = args.n
@@ -253,6 +304,17 @@ def main() -> None:
     num_vars = next_var - 1
 
     if args.lazy:
+        blocked_sets = set()
+        blocked_orders = set()
+
+        def make_block(order: List[int]) -> Clause:
+            block: Clause = []
+            for i in range(n):
+                for j in range(i + 1, n):
+                    for k in range(j + 1, n):
+                        block.append(-sigma_var[(order[i], order[j], order[k])])
+            return block
+
         for it in range(args.max_iters):
             write_dimacs(args.out, num_vars, clauses)
             status, assign = run_cadical(args.out, plain=True)
@@ -262,18 +324,50 @@ def main() -> None:
             if status != "SAT":
                 raise SystemExit("Solver error")
 
-            seq = find_alternating_sequence(N, n, sigma_var, assign)
-            if seq is None:
+            missing = [v for v in sigma_var.values() if v not in assign]
+            if missing:
+                raise SystemExit(f"Model missing {len(missing)} sigma vars; cannot trust search.")
+
+            if N <= 10:
+                seqs = find_alternating_sets_small(N, n, sigma_var, assign, blocked_sets, args.batch)
+            else:
+                seq = find_alternating_sequence(N, n, sigma_var, assign)
+                seqs = [] if seq is None else [seq]
+
+            if not seqs:
                 print("SAT and no alternating subset found -> OM3Counterexample candidate")
                 return
 
-            block: Clause = []
-            for i in range(n):
-                for j in range(i + 1, n):
-                    for k in range(j + 1, n):
-                        block.append(-sigma_var[(seq[i], seq[j], seq[k])])
-            clauses.append(block)
-            print(f"iter {it + 1}: blocked one alternating subset (clause len {len(block)})")
+            new_sets = 0
+            new_orders = 0
+            for seq in seqs:
+                seq = canonical_rotate_min(seq)
+                subset = tuple(sorted(seq))
+                if args.block_set:
+                    if subset in blocked_sets:
+                        continue
+                    blocked_sets.add(subset)
+                    new_sets += 1
+                    m = subset[0]
+                    rest = list(subset[1:])
+                    for perm in itertools.permutations(rest):
+                        clauses.append(make_block([m, *perm]))
+                else:
+                    order = tuple(seq)
+                    if order in blocked_orders:
+                        continue
+                    blocked_orders.add(order)
+                    clauses.append(make_block(seq))
+                    new_orders += 1
+
+            if args.block_set:
+                print(
+                    f"iter {it + 1}: blocked {new_sets} set(s); total blocked sets={len(blocked_sets)}"
+                )
+            else:
+                print(
+                    f"iter {it + 1}: blocked {new_orders} order(s); total blocked orders={len(blocked_orders)}"
+                )
 
         print(f"Reached max-iters={args.max_iters} without UNSAT or counterexample")
         return
