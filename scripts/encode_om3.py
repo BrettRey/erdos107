@@ -43,6 +43,14 @@ def write_dimacs(path: str, num_vars: int, clauses: List[Clause]) -> None:
             fp.write(" ".join(str(l) for l in cl) + " 0\n")
 
 
+def dump_sigma_json(path: str, N: int, n: int, sigma_var, assign: Dict[int, bool]) -> None:
+    sigma = {}
+    for (a, b, c), v in sigma_var.items():
+        sigma[f"{a},{b},{c}"] = bool(assign[v])
+    with open(path, "w", encoding="utf-8") as fp:
+        json.dump({"N": N, "n": n, "sigma": sigma}, fp, indent=2)
+
+
 def run_cadical(cnf_path: str, plain: bool = False) -> Tuple[str, Dict[int, bool]]:
     cmd = ["cadical", "-q"]
     if plain:
@@ -116,6 +124,8 @@ def find_alternating_sequence(N: int, n: int, sigma_var, assign: Dict[int, bool]
         if cand.bit_count() < (n - len(seq)):
             return None
         for x in iter_bits(cand):
+            if len(seq) + 1 == n:
+                return seq + [x]
             new_used = used | (1 << x)
             new_pair = pair_mask
             for v in seq:
@@ -197,6 +207,11 @@ def find_alternating_orders_batch_large(
         if cand.bit_count() < (n - len(seq)):
             return
         for x in iter_bits(cand):
+            if len(seq) + 1 == n:
+                emit(seq + [x])
+                if len(out) >= limit:
+                    return
+                continue
             new_used = used | (1 << x)
             new_pair = pair_mask
             for v in seq:
@@ -272,6 +287,12 @@ def main() -> None:
     ap.add_argument("--lazy", action="store_true")
     ap.add_argument("--max-iters", type=int, default=500)
     ap.add_argument("--block-set", action="store_true")
+    ap.add_argument(
+        "--dump-sigma",
+        type=str,
+        default="",
+        help="When a counterexample candidate is found, write sigma values to JSON.",
+    )
     ap.add_argument(
         "--batch",
         type=int,
@@ -413,6 +434,9 @@ def main() -> None:
 
             if not seqs:
                 print("SAT and no alternating subset found -> OM3Counterexample candidate")
+                if args.dump_sigma:
+                    dump_sigma_json(args.dump_sigma, N, n, sigma_var, assign)
+                    print(f"Wrote sigma model to {args.dump_sigma}")
                 return
 
             new_sets = 0
