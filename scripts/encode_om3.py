@@ -5,7 +5,7 @@ import argparse
 import itertools
 import json
 import subprocess
-from typing import Dict, List, Tuple
+from typing import Dict, List, Optional, Tuple
 
 
 Clause = List[int]
@@ -168,6 +168,7 @@ def find_alternating_orders_batch_large(
     assign: Dict[int, bool],
     limit: int,
     blocked_orders: set[Tuple[int, ...]],
+    blocked_sets: Optional[set[Tuple[int, ...]]],
 ) -> List[List[int]]:
     # Precompute pos[a][b] bitmask of c with σ(a,b,c)=True.
     pos = [[0] * N for _ in range(N)]
@@ -192,6 +193,10 @@ def find_alternating_orders_batch_large(
             return
         seq = canonical_rotate_min(seq)
         key = tuple(seq)
+        if blocked_sets is not None:
+            subset = tuple(sorted(seq))
+            if subset in blocked_sets:
+                return
         if key in blocked_orders or key in seen:
             return
         seen.add(key)
@@ -402,6 +407,7 @@ def main() -> None:
     if args.lazy:
         blocked_sets = set()
         blocked_orders = set()
+        blocked_sets_seen: set[Tuple[int, ...]] = set()
 
         def make_block(order: List[int]) -> Clause:
             block: Clause = []
@@ -413,7 +419,7 @@ def main() -> None:
 
         for it in range(args.max_iters):
             write_dimacs(args.out, num_vars, clauses)
-            status, assign = run_cadical(args.out, plain=True)
+            status, assign = run_cadical(args.out, plain=False)
             if status == "UNSAT":
                 print(f"UNSAT after {it} blocking clauses")
                 return
@@ -422,14 +428,19 @@ def main() -> None:
 
             missing = [v for v in sigma_var.values() if v not in assign]
             if missing:
-                raise SystemExit(f"Model missing {len(missing)} sigma vars; cannot trust search.")
+                status2, assign = run_cadical(args.out, plain=True)
+                if status2 != "SAT":
+                    raise SystemExit("Unexpected solver status on plain rerun")
+                missing = [v for v in sigma_var.values() if v not in assign]
+                if missing:
+                    raise SystemExit(f"Model missing {len(missing)} sigma vars; cannot trust search.")
 
             if N <= 10:
                 seqs = find_alternating_sets_small(N, n, sigma_var, assign, blocked_sets, args.batch)
             else:
                 lim = args.batch if args.batch != 0 else 1
                 seqs = find_alternating_orders_batch_large(
-                    N, n, sigma_var, assign, lim, blocked_orders
+                    N, n, sigma_var, assign, lim, blocked_orders, blocked_sets if args.block_set else None
                 )
 
             if not seqs:
@@ -441,6 +452,7 @@ def main() -> None:
 
             new_sets = 0
             new_orders = 0
+            new_sets_this_iter: set[Tuple[int, ...]] = set()
             for seq in seqs:
                 seq = canonical_rotate_min(seq)
                 subset = tuple(sorted(seq))
@@ -449,6 +461,7 @@ def main() -> None:
                         continue
                     blocked_sets.add(subset)
                     new_sets += 1
+                    new_sets_this_iter.add(subset)
                     m = subset[0]
                     rest = list(subset[1:])
                     for perm in itertools.permutations(rest):
@@ -460,6 +473,8 @@ def main() -> None:
                     blocked_orders.add(order)
                     clauses.append(make_block(seq))
                     new_orders += 1
+                    new_sets_this_iter.add(subset)
+                blocked_sets_seen.add(subset)
 
             if args.block_set:
                 print(
@@ -467,7 +482,8 @@ def main() -> None:
                 )
             else:
                 print(
-                    f"iter {it + 1}: blocked {new_orders} order(s); total blocked orders={len(blocked_orders)}"
+                    f"iter {it + 1}: blocked {new_orders} order(s); total blocked orders={len(blocked_orders)}; "
+                    f"new sets this iter={len(new_sets_this_iter)}; total sets seen={len(blocked_sets_seen)}"
                 )
 
         print(f"Reached max-iters={args.max_iters} without UNSAT or counterexample")

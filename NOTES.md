@@ -9,3 +9,6 @@
 - Lazy SAT run (acyclic, batch=200) for n=6, N=16:
   - Command: `PYTHONUNBUFFERED=1 python3 scripts/encode_om3.py --n 6 --N 16 --acyclic --lazy --batch 200 --out lazy_6_16.cnf --max-iters 50 --dump-sigma sigma_6_16.json`
   - Result: candidate found; verified by `python3 scripts/verify_no_alternating.py --model sigma_6_16.json`
+- Lazy SAT run (acyclic, batch=2000, order-blocking) for n=6, N=17:
+  - Command: `PYTHONUNBUFFERED=1 python3 scripts/encode_om3.py --n 6 --N 17 --acyclic --lazy --batch 2000 --out lazy_6_17.cnf --max-iters 50`
+  - Result: reached max-iters; total sets seen=7255 / 12376, no UNSAT or counterexample.
