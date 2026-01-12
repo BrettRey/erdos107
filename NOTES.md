@@ -12,3 +12,8 @@
 - Lazy SAT run (acyclic, batch=2000, order-blocking) for n=6, N=17:
   - Command: `PYTHONUNBUFFERED=1 python3 scripts/encode_om3.py --n 6 --N 17 --acyclic --lazy --batch 2000 --out lazy_6_17.cnf --max-iters 50`
   - Result: reached max-iters; total sets seen=7255 / 12376, no UNSAT or counterexample.
+- Lazy SAT run (acyclic, batch=2000, order-blocking) for n=6, N=17 (resume):
+  - Command: `PYTHONUNBUFFERED=1 python3 scripts/encode_om3.py --n 6 --N 17 --acyclic --lazy --batch 2000 --out lazy_6_17.cnf --max-iters 80 --state state_6_17.json --save-every 1`
+  - Result: reached max-iters; total sets seen=8216 / 12376 (iter 80).
+  - Resume: `--resume --max-iters 80 --dump-sigma sigma_6_17.json`
+  - Result: reached max-iters; total sets seen=10152 / 12376 (iter 160), newly seen sets=14 at iter 160.

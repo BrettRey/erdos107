@@ -4,6 +4,7 @@ from __future__ import annotations
 import argparse
 import itertools
 import json
+import os
 import subprocess
 from typing import Dict, List, Optional, Tuple
 
@@ -49,6 +50,23 @@ def dump_sigma_json(path: str, N: int, n: int, sigma_var, assign: Dict[int, bool
         sigma[f"{a},{b},{c}"] = bool(assign[v])
     with open(path, "w", encoding="utf-8") as fp:
         json.dump({"N": N, "n": n, "sigma": sigma}, fp, indent=2)
+
+
+def save_state(path: str, N: int, n: int, it_done: int, blocked_orders: set[Tuple[int, ...]]) -> None:
+    data = {
+        "N": N,
+        "n": n,
+        "it_done": it_done,
+        "blocked_orders": [list(o) for o in blocked_orders],
+    }
+    with open(path, "w", encoding="utf-8") as fp:
+        json.dump(data, fp)
+
+
+def load_state(path: str) -> Tuple[int, int, int, List[List[int]]]:
+    with open(path, "r", encoding="utf-8") as fp:
+        data = json.load(fp)
+    return int(data["N"]), int(data["n"]), int(data.get("it_done", 0)), data["blocked_orders"]
 
 
 def run_cadical(cnf_path: str, plain: bool = False) -> Tuple[str, Dict[int, bool]]:
@@ -304,6 +322,9 @@ def main() -> None:
         default=0,
         help="Lazy mode: number of distinct alternating n-sets to block per SAT model (0 = block all found).",
     )
+    ap.add_argument("--state", type=str, default="")
+    ap.add_argument("--resume", action="store_true")
+    ap.add_argument("--save-every", type=int, default=1)
     args = ap.parse_args()
 
     n = args.n
@@ -408,6 +429,7 @@ def main() -> None:
         blocked_sets = set()
         blocked_orders = set()
         blocked_sets_seen: set[Tuple[int, ...]] = set()
+        start_it = 0
 
         def make_block(order: List[int]) -> Clause:
             block: Clause = []
@@ -417,7 +439,21 @@ def main() -> None:
                         block.append(-sigma_var[(order[i], order[j], order[k])])
             return block
 
-        for it in range(args.max_iters):
+        if args.state and args.resume and os.path.exists(args.state):
+            sN, sn, start_it, orders = load_state(args.state)
+            if sN != N or sn != n:
+                raise SystemExit(f"State file is for N={sN}, n={sn}, but run is N={N}, n={n}.")
+            for o in orders:
+                t = tuple(o)
+                blocked_orders.add(t)
+                blocked_sets_seen.add(tuple(sorted(t)))
+                clauses.append(make_block(o))
+            print(
+                f"Resumed: {len(blocked_orders)} blocked orders from {args.state} (it_done={start_it})"
+            )
+
+        for local_it in range(args.max_iters):
+            it = start_it + local_it
             write_dimacs(args.out, num_vars, clauses)
             status, assign = run_cadical(args.out, plain=False)
             if status == "UNSAT":
@@ -450,6 +486,7 @@ def main() -> None:
                     print(f"Wrote sigma model to {args.dump_sigma}")
                 return
 
+            prev_sets_seen = len(blocked_sets_seen)
             new_sets = 0
             new_orders = 0
             new_sets_this_iter: set[Tuple[int, ...]] = set()
@@ -476,15 +513,22 @@ def main() -> None:
                     new_sets_this_iter.add(subset)
                 blocked_sets_seen.add(subset)
 
+            newly_seen = len(blocked_sets_seen) - prev_sets_seen
+
             if args.block_set:
                 print(
-                    f"iter {it + 1}: blocked {new_sets} set(s); total blocked sets={len(blocked_sets)}"
+                    f"iter {it + 1}: blocked {new_sets} set(s); total blocked sets={len(blocked_sets)}; "
+                    f"newly seen sets={newly_seen}"
                 )
             else:
                 print(
                     f"iter {it + 1}: blocked {new_orders} order(s); total blocked orders={len(blocked_orders)}; "
-                    f"new sets this iter={len(new_sets_this_iter)}; total sets seen={len(blocked_sets_seen)}"
+                    f"new sets this iter={len(new_sets_this_iter)}; total sets seen={len(blocked_sets_seen)}; "
+                    f"newly seen sets={newly_seen}"
                 )
+
+            if args.state and ((it + 1) % args.save_every == 0):
+                save_state(args.state, N, n, it + 1, blocked_orders)
 
         print(f"Reached max-iters={args.max_iters} without UNSAT or counterexample")
         return
