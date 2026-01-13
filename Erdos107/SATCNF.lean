@@ -114,8 +114,8 @@ noncomputable def acyclicClauses (N : ℕ) : List (List (Lit (Var N))) := by
               let y := Var.sigma d b c
               let z := Var.sigma a d c
               let w := Var.sigma a b d
-            [[Lit.neg x, Lit.pos y, Lit.pos z, Lit.pos w]]
-          else []
+              [[Lit.neg x, Lit.pos y, Lit.pos z, Lit.pos w]]
+            else []
 
 def xnorClauses {N : ℕ} (q x y : Var N) : List (List (Lit (Var N))) :=
   [ [Lit.pos q, Lit.pos x, Lit.pos y]
@@ -209,6 +209,20 @@ lemma cycle_clause_neg {N : ℕ} (ot : OrderType N) {a b c : Fin N}
   have hc : ot.σ a b c = ot.σ b c a := ot.cycle h
   cases hbc : ot.σ a b c <;> simp [evalClause_two, valuationOfOrderType, evalLit, hc, hbc]
 
+lemma acyclic_clause {N : ℕ} (ot : OrderType N) (hacyc : OrderType.Acyclic ot)
+    {a b c d : Fin N} (h : Distinct4 a b c d) :
+    evalClause (valuationOfOrderType ot)
+      [Lit.neg (Var.sigma a b c), Lit.pos (Var.sigma d b c),
+       Lit.pos (Var.sigma a d c), Lit.pos (Var.sigma a b d)] = true := by
+  have hacyc' := hacyc a b c d h
+  rcases hacyc' with h1 | hrest
+  · simp [evalClause_four, valuationOfOrderType, evalLit, h1]
+  · rcases hrest with h2 | hrest
+    · simp [evalClause_four, valuationOfOrderType, evalLit, h2]
+    · rcases hrest with h3 | h4
+      · simp [evalClause_four, valuationOfOrderType, evalLit, h3]
+      · simp [evalClause_four, valuationOfOrderType, evalLit, h4]
+
 theorem swap12Clauses_sound {N : ℕ} (ot : OrderType N) :
     evalCNF (valuationOfOrderType ot) { clauses := swap12Clauses N } = true := by
   classical
@@ -266,9 +280,27 @@ theorem cycleClauses_sound {N : ℕ} (ot : OrderType N) :
 
 theorem acyclicClauses_sound {N : ℕ} (ot : OrderType N) (h : OrderType.Acyclic ot) :
     evalCNF (valuationOfOrderType ot) { clauses := acyclicClauses N } = true := by
-  -- TODO: derive from OrderType.Acyclic
   classical
-  sorry
+  apply (List.all_eq_true).2
+  intro cl hcl
+  rcases (mem_listBind.mp hcl) with ⟨a, ha, hcl⟩
+  rcases (mem_listBind.mp hcl) with ⟨b, hb, hcl⟩
+  rcases (mem_listBind.mp hcl) with ⟨c, hc, hcl⟩
+  rcases (mem_listBind.mp hcl) with ⟨d, hd, hcl⟩
+  by_cases h' : Distinct4 a b c d
+  · have hcl' : cl ∈
+        [[Lit.neg (Var.sigma a b c), Lit.pos (Var.sigma d b c),
+          Lit.pos (Var.sigma a d c), Lit.pos (Var.sigma a b d)]] := by
+        simpa [h'] using hcl
+    have hcl'' :
+        cl =
+          [Lit.neg (Var.sigma a b c), Lit.pos (Var.sigma d b c),
+           Lit.pos (Var.sigma a d c), Lit.pos (Var.sigma a b d)] := by
+      simpa using hcl'
+    simpa [hcl''] using acyclic_clause ot h h'
+  · have : False := by
+      simpa [h'] using hcl
+    exact this.elim
 
 theorem gpRelClauses_sound {N : ℕ} (ot : OrderType N) (h : OrderType.IsChirotope ot) :
     evalCNF (valuationOfOrderType ot) { clauses := gpRelClauses N } = true := by

@@ -38,6 +38,7 @@
 - Added helper lemmas for clause evaluation (`evalClause_two`, `evalClause_four`, `evalCNF_cons`).
 - Added `evalCNF_append` helper (currently stubbed).
 - Proved swap/cycle clause soundness (lemmas now discharged); remaining soundness lemmas still stubbed.
+- Proved acyclic clause soundness (both single-clause and clause-family).
 - Decision log:
   - Keep CEGIS running in the background (no restart).
   - Pivot Lean spec: `satSpecCNF` is parameterized by a blocked-order list (CEGIS-friendly CNF).
