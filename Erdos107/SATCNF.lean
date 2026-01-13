@@ -1,5 +1,6 @@
 import Erdos107.SATSpec
 import Mathlib.Data.Fin.Basic
+import Mathlib.Data.Fin.Embedding
 import Mathlib.Data.List.Basic
 
 namespace ErdosSzekeres
@@ -116,13 +117,29 @@ noncomputable def gpRelClauses (N : ℕ) : List (List (Lit (Var N))) := by
                 ]
               else []
 
-noncomputable def satSpecCNF (n N : ℕ) : CNF (Var N) := by
+def triples (n : ℕ) : List (Fin n × Fin n × Fin n) := by
   classical
-  -- TODO: add GPRel clauses and alternating-avoidance clauses.
-  let _ := n
+  exact
+    listBind (allFin n) fun i =>
+      listBind (allFin n) fun j =>
+        listBind (allFin n) fun k =>
+          if h : i < j ∧ j < k then
+            [(i, j, k)]
+          else []
+
+def avoidClause {n N : ℕ} (f : Fin n ↪ Fin N) : List (Lit (Var N)) :=
+  (triples n).map (fun t => match t with
+    | (i, j, k) => Lit.neg (Var.sigma (f i) (f j) (f k)))
+
+def avoidClauses {n N : ℕ} (blocked : List (Fin n ↪ Fin N)) : List (List (Lit (Var N))) :=
+  blocked.map avoidClause
+
+noncomputable def satSpecCNF (n N : ℕ) (blocked : List (Fin n ↪ Fin N)) : CNF (Var N) := by
+  classical
   exact {
     clauses :=
-      swap12Clauses N ++ cycleClauses N ++ acyclicClauses N ++ gpRelClauses N
+      swap12Clauses N ++ cycleClauses N ++ acyclicClauses N ++ gpRelClauses N ++
+        avoidClauses blocked
   }
 
 def valuationOfOrderType {N : ℕ} (ot : OrderType N) : Valuation (Var N)
@@ -131,16 +148,17 @@ def valuationOfOrderType {N : ℕ} (ot : OrderType N) : Valuation (Var N)
   | Var.gp2 a b c d e => decide (ot.σ a b d = ot.σ a c e)
   | Var.gp3 a b c d e => decide (ot.σ a b e = ot.σ a c d)
 
-theorem satSpecCNF_sound {n N : ℕ} (ot : OrderType N) (_h : SATSpec n N ot) :
-    Satisfiable (satSpecCNF n N) := by
+theorem satSpecCNF_sound {n N : ℕ} (blocked : List (Fin n ↪ Fin N)) (ot : OrderType N)
+    (_h : SATSpec n N ot) :
+    Satisfiable (satSpecCNF n N blocked) := by
   -- TODO: prove soundness from SATSpec (swap/cycle/acyclic + GPRel + avoidance).
   classical
   sorry
 
-theorem satCounterexample_imp_satisfiable {n N : ℕ} :
-    SATCounterexample n N → Satisfiable (satSpecCNF n N) := by
+theorem satCounterexample_imp_satisfiable {n N : ℕ} (blocked : List (Fin n ↪ Fin N)) :
+    SATCounterexample n N → Satisfiable (satSpecCNF n N blocked) := by
   rintro ⟨ot, h⟩
-  exact satSpecCNF_sound ot h
+  exact satSpecCNF_sound blocked ot h
 
 end SATCNF
 
