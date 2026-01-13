@@ -19,3 +19,11 @@
   - Result: reached max-iters; total sets seen=10152 / 12376 (iter 160), newly seen sets=14 at iter 160.
 - Fully saturated missing 6-sets (state_6_17_fully_saturated.json), solved CNF as SAT but verifier found alternating 6-subset:
   - Witness: subset (0,1,2,4,9,16), order (0,4,1,9,16,2).
+
+## 2026-01-13
+
+- Added witness batching to `scripts/cegis_sat_loop.py` (`--witness-batch`), so each SAT model can saturate multiple witness 6-sets per iteration.
+- Overnight CEGIS run (n=6, N=17) continued; no UNSAT or verified counterexample yet.
+  - Current work state: `state_6_17_work.json`
+  - Log: `logs/cegis_6_17.log`
+  - Run command: `python3 scripts/cegis_sat_loop.py --state state_6_17_work.json --out-state state_6_17_work.json --steps 100000 --witness-batch 100`

@@ -85,8 +85,13 @@ def build_sigma(triple_to_var: Dict[str, int], assign: Dict[int, bool]) -> Dict[
     return sigma
 
 
-def find_witness(sigma: Dict[Tuple[int, int, int], bool], N: int, n: int) -> Tuple[Tuple[int, ...], Tuple[int, ...]] | None:
+def find_witnesses(
+    sigma: Dict[Tuple[int, int, int], bool], N: int, n: int, limit: int
+) -> List[Tuple[Tuple[int, ...], Tuple[int, ...]]]:
+    out: List[Tuple[Tuple[int, ...], Tuple[int, ...]]] = []
     for subset in itertools.combinations(range(N), n):
+        if limit and len(out) >= limit:
+            break
         m = min(subset)
         rest = [x for x in subset if x != m]
         for perm in itertools.permutations(rest):
@@ -103,8 +108,9 @@ def find_witness(sigma: Dict[Tuple[int, int, int], bool], N: int, n: int) -> Tup
                 if not ok:
                     break
             if ok:
-                return subset, order
-    return None
+                out.append((subset, order))
+                break
+    return out
 
 
 def saturate_subset(blocked_orders: set[Tuple[int, ...]], subset: Iterable[int]) -> int:
@@ -127,6 +133,12 @@ def main() -> None:
     ap.add_argument("--n", type=int, default=6)
     ap.add_argument("--N", type=int, default=17)
     ap.add_argument("--steps", type=int, default=1)
+    ap.add_argument(
+        "--witness-batch",
+        type=int,
+        default=100,
+        help="How many witness n-sets to saturate per SAT model (0 = no limit).",
+    )
     ap.add_argument("--cnf", default="fullsat_6_17.cnf")
     ap.add_argument("--map", default="map_6_17.json")
     ap.add_argument("--model-out", default="sat_6_17.out")
@@ -181,22 +193,25 @@ def main() -> None:
         sigma = build_sigma(triple_to_var, assign)
 
         # Find witness
-        witness = find_witness(sigma, args.N, args.n)
-        if witness is None:
+        witnesses = find_witnesses(sigma, args.N, args.n, args.witness_batch)
+        if not witnesses:
             print("Verified: no alternating subset exists (counterexample candidate).")
             return
 
-        subset, order = witness
-        print("Found witness subset:", subset, "order:", order)
+        print(
+            f"Found {len(witnesses)} witness set(s); first subset={witnesses[0][0]} order={witnesses[0][1]}"
+        )
 
-        # Saturate witness subset
+        # Saturate witness subsets
         data = load_state(state_path)
         blocked = set(tuple(o) for o in data["blocked_orders"])
-        added = saturate_subset(blocked, subset)
+        total_added = 0
+        for subset, _order in witnesses:
+            total_added += saturate_subset(blocked, subset)
         data["blocked_orders"] = [list(o) for o in blocked]
         data["flags"] = {"acyclic": True, "block_set": False}
         save_state(out_path, data)
-        print("Added orders:", added, "total blocked orders:", len(blocked))
+        print("Added orders:", total_added, "total blocked orders:", len(blocked))
 
         # next iteration reads from out_state
         state_path = out_path
