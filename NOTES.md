@@ -37,3 +37,8 @@
 - Added soundness lemma stubs for swap/cycle/acyclic/GPRel clause families and wired `satSpecCNF_sound` to use a valuation witness.
 - Added helper lemmas for clause evaluation (`evalClause_two`, `evalClause_four`, `evalCNF_cons`).
 - Added `evalCNF_append` helper (currently stubbed).
+- Proved swap/cycle clause soundness (lemmas now discharged); remaining soundness lemmas still stubbed.
+- Decision log:
+  - Keep CEGIS running in the background (no restart).
+  - Pivot Lean spec: `satSpecCNF` is parameterized by a blocked-order list (CEGIS-friendly CNF).
+  - Proceed with SATCNF proof scaffolding (stubs first, then discharge swap/cycle/acyclic/avoid/GPRel).
