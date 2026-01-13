@@ -148,6 +148,30 @@ def valuationOfOrderType {N : ℕ} (ot : OrderType N) : Valuation (Var N)
   | Var.gp2 a b c d e => decide (ot.σ a b d = ot.σ a c e)
   | Var.gp3 a b c d e => decide (ot.σ a b e = ot.σ a c d)
 
+theorem swap12Clauses_sound {N : ℕ} (ot : OrderType N) :
+    evalCNF (valuationOfOrderType ot) { clauses := swap12Clauses N } = true := by
+  -- TODO: derive from OrderType.swap12
+  classical
+  sorry
+
+theorem cycleClauses_sound {N : ℕ} (ot : OrderType N) :
+    evalCNF (valuationOfOrderType ot) { clauses := cycleClauses N } = true := by
+  -- TODO: derive from OrderType.cycle
+  classical
+  sorry
+
+theorem acyclicClauses_sound {N : ℕ} (ot : OrderType N) (h : OrderType.Acyclic ot) :
+    evalCNF (valuationOfOrderType ot) { clauses := acyclicClauses N } = true := by
+  -- TODO: derive from OrderType.Acyclic
+  classical
+  sorry
+
+theorem gpRelClauses_sound {N : ℕ} (ot : OrderType N) (h : OrderType.IsChirotope ot) :
+    evalCNF (valuationOfOrderType ot) { clauses := gpRelClauses N } = true := by
+  -- TODO: derive from OrderType.IsChirotope
+  classical
+  sorry
+
 theorem avoidClause_sound {n N : ℕ} (ot : OrderType N)
     (h : OrderType.AvoidsAlternating ot n) (f : Fin n ↪ Fin N) :
     evalClause (valuationOfOrderType ot) (avoidClause f) = true := by
@@ -160,6 +184,8 @@ theorem satSpecCNF_sound {n N : ℕ} (blocked : List (Fin n ↪ Fin N)) (ot : Or
     Satisfiable (satSpecCNF n N blocked) := by
   -- TODO: prove soundness from SATSpec (swap/cycle/acyclic + GPRel + avoidance).
   classical
+  refine ⟨valuationOfOrderType ot, ?_⟩
+  -- TODO: combine clause soundness lemmas.
   sorry
 
 theorem satCounterexample_imp_satisfiable {n N : ℕ} (blocked : List (Fin n ↪ Fin N)) :
