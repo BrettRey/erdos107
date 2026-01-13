@@ -1,6 +1,7 @@
 import Erdos107.ErdosSzekeres
 import Erdos107.OrderType
 import Erdos107.SATSpec
+import Erdos107.SATCNF
 
 namespace ErdosSzekeres
 
@@ -71,6 +72,13 @@ theorem geom_counterexample_imp_SATCounterexample {n N : ℕ} :
     have hconv : HasConvexSubset (n := n) p :=
       containsAlternating_imp_convexSubset (p := p) (hp := hp) hcontains
     exact hno hconv
+
+/-- Geometric counterexamples imply satisfiability of the SAT CNF (soundness direction). -/
+theorem geom_counterexample_imp_CNF_satisfiable {n N : ℕ} :
+    (∃ p : Fin N → Plane, GeneralPositionFn p ∧ ¬ HasConvexSubset (n := n) p) →
+      SATCNF.Satisfiable (SATCNF.satSpecCNF n N) := by
+  intro hgeom
+  exact SATCNF.satCounterexample_imp_satisfiable (geom_counterexample_imp_SATCounterexample hgeom)
 
 /-- If there is no chirotope-level counterexample, then there is no geometric counterexample. -/
 theorem no_OM3Counterexample_imp_no_geom_counterexample {n N : ℕ} :

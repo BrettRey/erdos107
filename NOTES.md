@@ -27,3 +27,5 @@
   - Current work state: `state_6_17_work.json`
   - Log: `logs/cegis_6_17.log`
   - Run command: `python3 scripts/cegis_sat_loop.py --state state_6_17_work.json --out-state state_6_17_work.json --steps 100000 --witness-batch 100`
+- Lean pivot: added `OrderType.Acyclic`, `SATSpec`, and a CNF-spec stub (`SATCNF.satSpecCNF`) with a soundness lemma stub.
+- CNF spec now has explicit literals (`Lit.pos` / `Lit.neg`) to support negated clauses.
