@@ -34,11 +34,14 @@ inductive Var (N : ℕ)
 def satSpecCNF (n N : ℕ) : CNF (Var N) :=
   { clauses := [] }
 
+def valuationOfOrderType {N : ℕ} (ot : OrderType N) : Valuation (Var N)
+  | Var.sigma a b c => ot.σ a b c
+
 theorem satSpecCNF_sound {n N : ℕ} (ot : OrderType N) (h : SATSpec n N ot) :
     Satisfiable (satSpecCNF n N) := by
   -- TODO: populate CNF and prove soundness.
   classical
-  refine ⟨fun _ => true, ?_⟩
+  refine ⟨valuationOfOrderType ot, ?_⟩
   simp [satSpecCNF, evalCNF, evalClause]
 
 theorem satCounterexample_imp_satisfiable {n N : ℕ} :
