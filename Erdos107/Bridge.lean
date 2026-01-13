@@ -76,7 +76,7 @@ theorem geom_counterexample_imp_SATCounterexample {n N : ℕ} :
 /-- Geometric counterexamples imply satisfiability of the SAT CNF (soundness direction). -/
 theorem geom_counterexample_imp_CNF_satisfiable {n N : ℕ} :
     (∃ p : Fin N → Plane, GeneralPositionFn p ∧ ¬ HasConvexSubset (n := n) p) →
-      SATCNF.Satisfiable (SATCNF.satSpecCNF n N) := by
+      Satisfiable (SATCNF.satSpecCNF n N) := by
   intro hgeom
   exact SATCNF.satCounterexample_imp_satisfiable (geom_counterexample_imp_SATCounterexample hgeom)
 
