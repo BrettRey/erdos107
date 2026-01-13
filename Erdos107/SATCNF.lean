@@ -148,6 +148,13 @@ def valuationOfOrderType {N : ℕ} (ot : OrderType N) : Valuation (Var N)
   | Var.gp2 a b c d e => decide (ot.σ a b d = ot.σ a c e)
   | Var.gp3 a b c d e => decide (ot.σ a b e = ot.σ a c d)
 
+theorem avoidClause_sound {n N : ℕ} (ot : OrderType N)
+    (h : OrderType.AvoidsAlternating ot n) (f : Fin n ↪ Fin N) :
+    evalClause (valuationOfOrderType ot) (avoidClause f) = true := by
+  -- TODO: unfold IsAlternating/avoidClause and show one triple is false.
+  classical
+  sorry
+
 theorem satSpecCNF_sound {n N : ℕ} (blocked : List (Fin n ↪ Fin N)) (ot : OrderType N)
     (_h : SATSpec n N ot) :
     Satisfiable (satSpecCNF n N blocked) := by
