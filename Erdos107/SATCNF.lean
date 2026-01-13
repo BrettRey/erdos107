@@ -25,6 +25,21 @@ def evalClause {Var : Type} (v : Valuation Var) (cl : List (Lit Var)) : Bool :=
 def evalCNF {Var : Type} (v : Valuation Var) (cnf : CNF Var) : Bool :=
   cnf.clauses.all (fun cl => evalClause v cl)
 
+lemma evalClause_two {Var : Type} (v : Valuation Var) (l₁ l₂ : Lit Var) :
+    evalClause v [l₁, l₂] = (evalLit v l₁ || evalLit v l₂) := by
+  simp [evalClause]
+
+lemma evalClause_four {Var : Type} (v : Valuation Var) (l₁ l₂ l₃ l₄ : Lit Var) :
+    evalClause v [l₁, l₂, l₃, l₄] =
+      (evalLit v l₁ || (evalLit v l₂ || (evalLit v l₃ || evalLit v l₄))) := by
+  simp [evalClause]
+
+lemma evalCNF_cons {Var : Type} (v : Valuation Var) (cl : List (Lit Var))
+    (cls : List (List (Lit Var))) :
+    evalCNF v { clauses := cl :: cls } =
+      (evalClause v cl && evalCNF v { clauses := cls }) := by
+  simp [evalCNF]
+
 def Satisfiable {Var : Type} (cnf : CNF Var) : Prop :=
   ∃ v : Valuation Var, evalCNF v cnf = true
 
