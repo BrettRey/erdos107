@@ -47,3 +47,4 @@
 - Updated `scripts/cegis_sat_loop.py` to skip fully saturated n-sets when searching for witnesses.
 - Added `.gitignore` patterns for generated CNF/model/state/log artifacts.
 - Verified `lake build Erdos107.SATCNF` passes (warnings only) after the new lemma.
+- Restarted the long CEGIS run with the updated script (skip saturated sets), writing to `logs/cegis_6_17.log`.
