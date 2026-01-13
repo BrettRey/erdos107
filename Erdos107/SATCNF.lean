@@ -166,6 +166,18 @@ def triples (n : ℕ) : List (Fin n × Fin n × Fin n) := by
             [(i, j, k)]
           else []
 
+lemma mem_triples_of_lt {n : ℕ} {i j k : Fin n} (h : i < j ∧ j < k) :
+    (i, j, k) ∈ triples n := by
+  classical
+  -- unfold and use mem_listBind repeatedly
+  refine (mem_listBind).2 ?_
+  refine ⟨i, by simp [allFin], ?_⟩
+  refine (mem_listBind).2 ?_
+  refine ⟨j, by simp [allFin], ?_⟩
+  refine (mem_listBind).2 ?_
+  refine ⟨k, by simp [allFin], ?_⟩
+  simp [triples, h]
+
 def avoidClause {n N : ℕ} (f : Fin n ↪ Fin N) : List (Lit (Var N)) :=
   (triples n).map (fun t => match t with
     | (i, j, k) => Lit.neg (Var.sigma (f i) (f j) (f k)))

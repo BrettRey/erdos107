@@ -44,6 +44,7 @@
   - Pivot Lean spec: `satSpecCNF` is parameterized by a blocked-order list (CEGIS-friendly CNF).
   - Proceed with SATCNF proof scaffolding (stubs first, then discharge swap/cycle/acyclic/avoid/GPRel).
 - Added `avoidClause_false_iff` lemma and moved `valuationOfOrderType` earlier so avoidance proofs can use it.
+- Added `mem_triples_of_lt` lemma to connect `i<j<k` with membership in `triples n`.
 - Updated `scripts/cegis_sat_loop.py` to skip fully saturated n-sets when searching for witnesses.
 - Added `.gitignore` patterns for generated CNF/model/state/log artifacts.
 - Verified `lake build Erdos107.SATCNF` passes (warnings only) after the new lemma.
