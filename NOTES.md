@@ -30,3 +30,4 @@
 - Lean pivot: added `OrderType.Acyclic`, `SATSpec`, and a CNF-spec stub (`SATCNF.satSpecCNF`) with a soundness lemma stub.
 - CNF spec now has explicit literals (`Lit.pos` / `Lit.neg`) to support negated clauses.
 - Added `SATCNF.valuationOfOrderType` for mapping order types to CNF valuations (soundness stub still TODO).
+- Added clause generators for swap/cycle/acyclic to `SATCNF.satSpecCNF` (GPRel/avoidance still TODO).
