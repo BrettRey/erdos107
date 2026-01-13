@@ -60,6 +60,12 @@ inductive Var (N : ℕ)
   | gp2 (a b c d e : Fin N)
   | gp3 (a b c d e : Fin N)
 
+def valuationOfOrderType {N : ℕ} (ot : OrderType N) : Valuation (Var N)
+  | Var.sigma a b c => ot.σ a b c
+  | Var.gp1 a b c d e => decide (ot.σ a b c = ot.σ a d e)
+  | Var.gp2 a b c d e => decide (ot.σ a b d = ot.σ a c e)
+  | Var.gp3 a b c d e => decide (ot.σ a b e = ot.σ a c d)
+
 def listBind {α β : Type} (xs : List α) (f : α → List β) : List β :=
   xs.foldr (fun x acc => f x ++ acc) []
 
@@ -167,6 +173,42 @@ def avoidClause {n N : ℕ} (f : Fin n ↪ Fin N) : List (Lit (Var N)) :=
 def avoidClauses {n N : ℕ} (blocked : List (Fin n ↪ Fin N)) : List (List (Lit (Var N))) :=
   blocked.map avoidClause
 
+lemma avoidClause_false_iff {n N : ℕ} (ot : OrderType N) (f : Fin n ↪ Fin N) :
+    evalClause (valuationOfOrderType ot) (avoidClause f) = false ↔
+      ∀ t ∈ triples n,
+        match t with
+        | (i, j, k) => ot.σ (f i) (f j) (f k) = true := by
+  classical
+  constructor
+  · intro hfalse t ht
+    rcases t with ⟨i, j, k⟩
+    have hmem : Lit.neg (Var.sigma (f i) (f j) (f k)) ∈ avoidClause f := by
+      refine (List.mem_map).2 ?_
+      exact ⟨(i, j, k), ht, rfl⟩
+    have hfalse' :
+        (avoidClause f).any (fun lit => evalLit (valuationOfOrderType ot) lit) = false := by
+      simpa [evalClause] using hfalse
+    have h := (List.any_eq_false).1 hfalse' _ hmem
+    have h' : (!ot.σ (f i) (f j) (f k)) = false := by
+      simpa [evalLit, valuationOfOrderType] using h
+    cases hσ : ot.σ (f i) (f j) (f k) with
+    | false =>
+        have : False := by
+          simpa [hσ] using h'
+        exact this.elim
+    | true =>
+        exact hσ
+  · intro hall
+    have hfalse' :
+        (avoidClause f).any (fun lit => evalLit (valuationOfOrderType ot) lit) = false := by
+      apply (List.any_eq_false).2
+      intro lit hlit
+      rcases (List.mem_map).1 hlit with ⟨t, ht, rfl⟩
+      rcases t with ⟨i, j, k⟩
+      specialize hall (i, j, k) ht
+      simpa [evalLit, valuationOfOrderType, hall]
+    simpa [evalClause] using hfalse'
+
 noncomputable def satSpecCNF (n N : ℕ) (blocked : List (Fin n ↪ Fin N)) : CNF (Var N) := by
   classical
   exact {
@@ -174,12 +216,6 @@ noncomputable def satSpecCNF (n N : ℕ) (blocked : List (Fin n ↪ Fin N)) : CN
       swap12Clauses N ++ cycleClauses N ++ acyclicClauses N ++ gpRelClauses N ++
         avoidClauses blocked
   }
-
-def valuationOfOrderType {N : ℕ} (ot : OrderType N) : Valuation (Var N)
-  | Var.sigma a b c => ot.σ a b c
-  | Var.gp1 a b c d e => decide (ot.σ a b c = ot.σ a d e)
-  | Var.gp2 a b c d e => decide (ot.σ a b d = ot.σ a c e)
-  | Var.gp3 a b c d e => decide (ot.σ a b e = ot.σ a c d)
 
 lemma swap12_clause_pos {N : ℕ} (ot : OrderType N) {a b c : Fin N}
     (h : Distinct3 a b c) :

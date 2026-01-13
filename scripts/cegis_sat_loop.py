@@ -4,9 +4,11 @@ from __future__ import annotations
 import argparse
 import itertools
 import json
+import math
 import os
 import subprocess
 import sys
+from collections import Counter
 from typing import Dict, Iterable, List, Tuple
 
 
@@ -85,13 +87,25 @@ def build_sigma(triple_to_var: Dict[str, int], assign: Dict[int, bool]) -> Dict[
     return sigma
 
 
+def saturated_sets_from_blocked(blocked_orders: set[Tuple[int, ...]], n: int) -> set[Tuple[int, ...]]:
+    threshold = math.factorial(n - 1)
+    counts = Counter(tuple(sorted(o)) for o in blocked_orders)
+    return {s for s, k in counts.items() if k >= threshold}
+
+
 def find_witnesses(
-    sigma: Dict[Tuple[int, int, int], bool], N: int, n: int, limit: int
+    sigma: Dict[Tuple[int, int, int], bool],
+    N: int,
+    n: int,
+    saturated_sets: set[Tuple[int, ...]],
+    limit: int,
 ) -> List[Tuple[Tuple[int, ...], Tuple[int, ...]]]:
     out: List[Tuple[Tuple[int, ...], Tuple[int, ...]]] = []
     for subset in itertools.combinations(range(N), n):
         if limit and len(out) >= limit:
             break
+        if subset in saturated_sets:
+            continue
         m = min(subset)
         rest = [x for x in subset if x != m]
         for perm in itertools.permutations(rest):
@@ -192,8 +206,12 @@ def main() -> None:
         assign = parse_model(args.model_out)
         sigma = build_sigma(triple_to_var, assign)
 
+        data = load_state(state_path)
+        blocked = set(tuple(o) for o in data["blocked_orders"])
+        saturated_sets = saturated_sets_from_blocked(blocked, args.n)
+
         # Find witness
-        witnesses = find_witnesses(sigma, args.N, args.n, args.witness_batch)
+        witnesses = find_witnesses(sigma, args.N, args.n, saturated_sets, args.witness_batch)
         if not witnesses:
             print("Verified: no alternating subset exists (counterexample candidate).")
             return
@@ -203,11 +221,10 @@ def main() -> None:
         )
 
         # Saturate witness subsets
-        data = load_state(state_path)
-        blocked = set(tuple(o) for o in data["blocked_orders"])
         total_added = 0
         for subset, _order in witnesses:
             total_added += saturate_subset(blocked, subset)
+            saturated_sets.add(tuple(sorted(subset)))
         data["blocked_orders"] = [list(o) for o in blocked]
         data["flags"] = {"acyclic": True, "block_set": False}
         save_state(out_path, data)

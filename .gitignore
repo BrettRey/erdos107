@@ -5,3 +5,16 @@
 **/*.ilean
 **/*.c
 **/*.o
+**/__pycache__/
+*.cnf
+*.lrat
+*.drat
+lazy_*.cnf
+fullsat_*.cnf
+om3_*.cnf
+map_*.json
+sat_*.out
+sigma_*.json
+state_*.json
+state_*.json.tmp
+logs/
