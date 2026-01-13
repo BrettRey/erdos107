@@ -52,21 +52,35 @@ def dump_sigma_json(path: str, N: int, n: int, sigma_var, assign: Dict[int, bool
         json.dump({"N": N, "n": n, "sigma": sigma}, fp, indent=2)
 
 
-def save_state(path: str, N: int, n: int, it_done: int, blocked_orders: set[Tuple[int, ...]]) -> None:
+def save_state(
+    path: str,
+    N: int,
+    n: int,
+    it_done: int,
+    blocked_orders: set[Tuple[int, ...]],
+    flags: Dict[str, bool],
+) -> None:
     data = {
         "N": N,
         "n": n,
         "it_done": it_done,
         "blocked_orders": [list(o) for o in blocked_orders],
+        "flags": flags,
     }
     with open(path, "w", encoding="utf-8") as fp:
         json.dump(data, fp)
 
 
-def load_state(path: str) -> Tuple[int, int, int, List[List[int]]]:
+def load_state(path: str) -> Tuple[int, int, int, List[List[int]], Dict[str, bool]]:
     with open(path, "r", encoding="utf-8") as fp:
         data = json.load(fp)
-    return int(data["N"]), int(data["n"]), int(data.get("it_done", 0)), data["blocked_orders"]
+    return (
+        int(data["N"]),
+        int(data["n"]),
+        int(data.get("it_done", 0)),
+        data["blocked_orders"],
+        data.get("flags", {}),
+    )
 
 
 def run_cadical(cnf_path: str, plain: bool = False) -> Tuple[str, Dict[int, bool]]:
@@ -440,9 +454,16 @@ def main() -> None:
             return block
 
         if args.state and args.resume and os.path.exists(args.state):
-            sN, sn, start_it, orders = load_state(args.state)
+            sN, sn, start_it, orders, flags = load_state(args.state)
             if sN != N or sn != n:
                 raise SystemExit(f"State file is for N={sN}, n={sn}, but run is N={N}, n={n}.")
+            if flags:
+                expected = {
+                    "acyclic": args.acyclic,
+                    "block_set": args.block_set,
+                }
+                if flags != expected:
+                    raise SystemExit(f"State flags {flags} do not match run flags {expected}.")
             for o in orders:
                 t = tuple(o)
                 blocked_orders.add(t)
@@ -528,8 +549,16 @@ def main() -> None:
                 )
 
             if args.state and ((it + 1) % args.save_every == 0):
-                save_state(args.state, N, n, it + 1, blocked_orders)
+                save_state(
+                    args.state,
+                    N,
+                    n,
+                    it + 1,
+                    blocked_orders,
+                    {"acyclic": args.acyclic, "block_set": args.block_set},
+                )
 
+        write_dimacs(args.out, num_vars, clauses)
         print(f"Reached max-iters={args.max_iters} without UNSAT or counterexample")
         return
 

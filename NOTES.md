@@ -17,3 +17,5 @@
   - Result: reached max-iters; total sets seen=8216 / 12376 (iter 80).
   - Resume: `--resume --max-iters 80 --dump-sigma sigma_6_17.json`
   - Result: reached max-iters; total sets seen=10152 / 12376 (iter 160), newly seen sets=14 at iter 160.
+- Fully saturated missing 6-sets (state_6_17_fully_saturated.json), solved CNF as SAT but verifier found alternating 6-subset:
+  - Witness: subset (0,1,2,4,9,16), order (0,4,1,9,16,2).
