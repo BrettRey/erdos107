@@ -31,3 +31,4 @@
 - CNF spec now has explicit literals (`Lit.pos` / `Lit.neg`) to support negated clauses.
 - Added `SATCNF.valuationOfOrderType` for mapping order types to CNF valuations (soundness stub still TODO).
 - Added clause generators for swap/cycle/acyclic to `SATCNF.satSpecCNF` (GPRel/avoidance still TODO).
+- Added GPRel clause generator with auxiliary variables (`gp1/gp2/gp3`) and XNOR gadgets; satSpecCNF now includes GPRel.
