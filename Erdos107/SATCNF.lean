@@ -40,6 +40,17 @@ lemma evalCNF_cons {Var : Type} (v : Valuation Var) (cl : List (Lit Var))
       (evalClause v cl && evalCNF v { clauses := cls }) := by
   simp [evalCNF]
 
+lemma evalCNF_nil {Var : Type} (v : Valuation Var) :
+    evalCNF v { clauses := [] } = true := by
+  simp [evalCNF]
+
+lemma evalCNF_append {Var : Type} (v : Valuation Var) (c1 c2 : CNF Var) :
+    evalCNF v { clauses := c1.clauses ++ c2.clauses } =
+      (evalCNF v c1 && evalCNF v c2) := by
+  -- TODO: prove when needed; keep as stub for now.
+  classical
+  sorry
+
 def Satisfiable {Var : Type} (cnf : CNF Var) : Prop :=
   ∃ v : Valuation Var, evalCNF v cnf = true
 

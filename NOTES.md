@@ -36,3 +36,4 @@
 - Added `avoidClause_sound` lemma stub (avoids alternating ⇒ each blocked clause is satisfied under valuationOfOrderType).
 - Added soundness lemma stubs for swap/cycle/acyclic/GPRel clause families and wired `satSpecCNF_sound` to use a valuation witness.
 - Added helper lemmas for clause evaluation (`evalClause_two`, `evalClause_four`, `evalCNF_cons`).
+- Added `evalCNF_append` helper (currently stubbed).
