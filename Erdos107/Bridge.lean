@@ -1,5 +1,6 @@
 import Erdos107.ErdosSzekeres
 import Erdos107.OrderType
+import Erdos107.SATSpec
 
 namespace ErdosSzekeres
 
@@ -15,6 +16,12 @@ def orderTypeOfPoints {N : ℕ} (p : Fin N → Plane) (hp : GeneralPositionFn p)
 /-- The induced order type satisfies the rank-3 chirotope (Grassmann–Plücker) axiom scheme. -/
 theorem orderTypeOfPoints_isChirotope {N : ℕ} (p : Fin N → Plane) (hp : GeneralPositionFn p) :
     OrderType.IsChirotope (orderTypeOfPoints p hp) := by
+  classical
+  sorry
+
+/-- The induced order type is acyclic (realizable case). -/
+theorem orderTypeOfPoints_acyclic {N : ℕ} (p : Fin N → Plane) (hp : GeneralPositionFn p) :
+    OrderType.Acyclic (orderTypeOfPoints p hp) := by
   classical
   sorry
 
@@ -49,6 +56,21 @@ theorem geom_counterexample_imp_OM3Counterexample {n N : ℕ} :
   have hconv : HasConvexSubset (n := n) p :=
     containsAlternating_imp_convexSubset (p := p) (hp := hp) hcontains
   exact hno hconv
+
+/-- Geometric counterexamples imply SAT-spec counterexamples (chirotope + acyclic + avoidance). -/
+theorem geom_counterexample_imp_SATCounterexample {n N : ℕ} :
+    (∃ p : Fin N → Plane, GeneralPositionFn p ∧ ¬ HasConvexSubset (n := n) p) →
+      SATCounterexample n N := by
+  classical
+  rintro ⟨p, hp, hno⟩
+  refine ⟨orderTypeOfPoints p hp, ?_⟩
+  refine ⟨orderTypeOfPoints_isChirotope p hp, ?_, ?_⟩
+  · exact orderTypeOfPoints_acyclic p hp
+  · apply (OrderType.AvoidsAlternating_iff_not_contains (ot := orderTypeOfPoints p hp) n).2
+    intro hcontains
+    have hconv : HasConvexSubset (n := n) p :=
+      containsAlternating_imp_convexSubset (p := p) (hp := hp) hcontains
+    exact hno hconv
 
 /-- If there is no chirotope-level counterexample, then there is no geometric counterexample. -/
 theorem no_OM3Counterexample_imp_no_geom_counterexample {n N : ℕ} :

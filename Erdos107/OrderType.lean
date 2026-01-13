@@ -8,6 +8,10 @@ namespace ErdosSzekeres
 def Distinct3 {N : ℕ} (i j k : Fin N) : Prop :=
   i ≠ j ∧ i ≠ k ∧ j ≠ k
 
+/-- Pairwise distinctness for an ordered quadruple of indices. -/
+def Distinct4 {N : ℕ} (a b c d : Fin N) : Prop :=
+  a ≠ b ∧ a ≠ c ∧ a ≠ d ∧ b ≠ c ∧ b ≠ d ∧ c ≠ d
+
 /-- An order type (uniform rank-3 chirotope): assigns an orientation sign to each ordered triple
     of distinct indices. Here we represent the sign as `Bool` (two-valued, since we are in general
     position and never need the collinear/zero case). -/
@@ -121,6 +125,16 @@ def IsChirotope {N : ℕ} (ot : ErdosSzekeres.OrderType N) : Prop :=
     Distinct3 a b e →
     Distinct3 a c d →
     GPRel ot a b c d e
+
+/-- Acyclicity axiom (rank-3): for any 4 distinct indices, the clause
+    ¬σ(a,b,c) ∨ σ(d,b,c) ∨ σ(a,d,c) ∨ σ(a,b,d) holds. -/
+def Acyclic {N : ℕ} (ot : ErdosSzekeres.OrderType N) : Prop :=
+  ∀ a b c d : Fin N,
+    Distinct4 a b c d →
+      (ot.σ a b c = false) ∨
+      (ot.σ d b c = true) ∨
+      (ot.σ a d c = true) ∨
+      (ot.σ a b d = true)
 
 /-- `Distinct3` is preserved by reindexing. -/
 lemma Distinct3.map {N M : ℕ} (f : Fin N ↪ Fin M) {i j k : Fin N} :
