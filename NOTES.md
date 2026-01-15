@@ -49,3 +49,4 @@
 - Added `.gitignore` patterns for generated CNF/model/state/log artifacts.
 - Verified `lake build Erdos107.SATCNF` passes (warnings only) after the new lemma.
 - Restarted the long CEGIS run with the updated script (skip saturated sets), writing to `logs/cegis_6_17.log`.
+- Pivoted away from long full-saturation solves after >16h runtime; stopped the non-plain CaDiCaL run and parked the compute pipeline to focus on Lean proofs (avoidClause/GPRel/satSpec soundness).
