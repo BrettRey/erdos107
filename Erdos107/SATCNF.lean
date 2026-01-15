@@ -539,10 +539,117 @@ theorem gpRelClauses_sound {N : ℕ} (ot : OrderType N) (h : OrderType.IsChiroto
 theorem avoidClause_sound {n N : ℕ} (ot : OrderType N)
     (h : OrderType.AvoidsAlternating ot n) (f : Fin n ↪ Fin N) :
     evalClause (valuationOfOrderType ot) (avoidClause f) = true := by
-  -- TODO: unfold IsAlternating/avoidClause and show one triple is false.
   classical
-  sorry
-
+  by_contra hfalse
+  cases hval : evalClause (valuationOfOrderType ot) (avoidClause f) with
+  | true =>
+      exact (hfalse (by simpa [hval])).elim
+  | false =>
+      have hall := (avoidClause_false_iff ot f).1 (by simpa [hval])
+      -- continue below
+      let ot' : OrderType n := OrderType.reindex ot f
+      have hcyc_true : ∀ {i j k : Fin n}, OrderType.CyclicTriple i j k → ot'.σ i j k = true := by
+        intro i j k hcyc
+        rcases hcyc with h1 | h2 | h3
+        · -- i < j < k
+          have ht := hall (i, j, k) (mem_triples_of_lt h1)
+          simpa [OrderType.reindex] using ht
+        · -- j < k < i
+          have ht := hall (j, k, i) (mem_triples_of_lt h2)
+          have hij : i ≠ j := by
+            have hji_val : (j : ℕ) < i := Nat.lt_trans
+              ((Fin.lt_def).1 h2.1)
+              ((Fin.lt_def).1 h2.2)
+            have hne : (j : ℕ) ≠ i := ne_of_lt hji_val
+            exact ne_comm.mp ((Fin.ne_iff_vne _ _).2 hne)
+          have hik : i ≠ k := by
+            have hki_val : (k : ℕ) < i := (Fin.lt_def).1 h2.2
+            have hne : (k : ℕ) ≠ i := ne_of_lt hki_val
+            exact ne_comm.mp ((Fin.ne_iff_vne _ _).2 hne)
+          have hjk : j ≠ k := by
+            have hjk_val : (j : ℕ) < k := (Fin.lt_def).1 h2.1
+            exact (Fin.ne_iff_vne _ _).2 (ne_of_lt hjk_val)
+          have hdist : Distinct3 i j k := ⟨hij, hik, hjk⟩
+          have hcycle : ot'.σ i j k = ot'.σ j k i := ot'.cycle hdist
+          simpa [OrderType.reindex, hcycle] using ht
+        · -- k < i < j
+          have ht := hall (k, i, j) (mem_triples_of_lt h3)
+          have hij : i ≠ j := by
+            have hij_val : (i : ℕ) < j := (Fin.lt_def).1 h3.2
+            exact (Fin.ne_iff_vne _ _).2 (ne_of_lt hij_val)
+          have hik : i ≠ k := by
+            have hki_val : (k : ℕ) < i := (Fin.lt_def).1 h3.1
+            exact ne_comm.mp ((Fin.ne_iff_vne _ _).2 (ne_of_lt hki_val))
+          have hjk : j ≠ k := by
+            have hkj_val : (k : ℕ) < j := Nat.lt_trans
+              ((Fin.lt_def).1 h3.1)
+              ((Fin.lt_def).1 h3.2)
+            exact ne_comm.mp ((Fin.ne_iff_vne _ _).2 (ne_of_lt hkj_val))
+          have hdist : Distinct3 i j k := ⟨hij, hik, hjk⟩
+          have hdist' : Distinct3 j k i := ⟨hjk, ne_comm.mp hij, ne_comm.mp hik⟩
+          have hcycle1 : ot'.σ i j k = ot'.σ j k i := ot'.cycle hdist
+          have hcycle2 : ot'.σ j k i = ot'.σ k i j := ot'.cycle hdist'
+          -- chain the cycles and use ht
+          simpa [OrderType.reindex, hcycle1, hcycle2] using ht
+      -- show ot' is alternating, contradicting AvoidsAlternating
+      have hAlt : OrderType.IsAlternating ot' := by
+        intro i j k hdist
+        by_cases hcyc : OrderType.CyclicTriple i j k
+        · have ht := hcyc_true (i := i) (j := j) (k := k) hcyc
+          simp [OrderType.altσ, hcyc, ht]
+        · -- non-cyclic: swap first two yields cyclic
+          have hswapcyc : OrderType.CyclicTriple j i k := by
+            -- case split on the total order of i,j,k
+            have hij' : (i : ℕ) < j ∨ (j : ℕ) < i :=
+              lt_or_gt_of_ne ((Fin.ne_iff_vne _ _).1 hdist.1)
+            have hik' : (i : ℕ) < k ∨ (k : ℕ) < i :=
+              lt_or_gt_of_ne ((Fin.ne_iff_vne _ _).1 hdist.2.1)
+            have hjk' : (j : ℕ) < k ∨ (k : ℕ) < j :=
+              lt_or_gt_of_ne ((Fin.ne_iff_vne _ _).1 hdist.2.2)
+            have hij : i < j ∨ j < i := by
+              cases hij' with
+              | inl h => exact Or.inl ((Fin.lt_def).2 h)
+              | inr h => exact Or.inr ((Fin.lt_def).2 h)
+            have hik : i < k ∨ k < i := by
+              cases hik' with
+              | inl h => exact Or.inl ((Fin.lt_def).2 h)
+              | inr h => exact Or.inr ((Fin.lt_def).2 h)
+            have hjk : j < k ∨ k < j := by
+              cases hjk' with
+              | inl h => exact Or.inl ((Fin.lt_def).2 h)
+              | inr h => exact Or.inr ((Fin.lt_def).2 h)
+            cases hij with
+            | inl hij =>
+                cases hjk with
+                | inl hjk =>
+                    -- i<j<k would make cyclic, contradiction
+                    exact (hcyc (Or.inl ⟨hij, hjk⟩)).elim
+                | inr hkj =>
+                    cases hik with
+                    | inl hik =>
+                        -- i<k<j -> cyclic for j i k (second disjunct)
+                        exact Or.inr (Or.inl ⟨hik, hkj⟩)
+                    | inr hki =>
+                        -- k<i<j would make cyclic, contradiction
+                        exact (hcyc (Or.inr (Or.inr ⟨hki, hij⟩))).elim
+            | inr hji =>
+                cases hik with
+                | inl hik =>
+                    -- j<i<k -> cyclic for j i k (first disjunct)
+                    exact Or.inl ⟨hji, hik⟩
+                | inr hki =>
+                    cases hjk with
+                    | inl hjk =>
+                        -- j<k<i would make cyclic, contradiction
+                        exact (hcyc (Or.inr (Or.inl ⟨hjk, hki⟩))).elim
+                    | inr hkj =>
+                        -- k<j<i -> cyclic for j i k (third disjunct)
+                        exact Or.inr (Or.inr ⟨hkj, hji⟩)
+          have ht := hcyc_true (i := j) (j := i) (k := k) hswapcyc
+          have hswap : ot'.σ i j k = ! ot'.σ j i k := ot'.swap12 hdist
+          -- altσ is false when cyclicTriple is false
+          simp [OrderType.altσ, hcyc, hswap, ht]
+      exact (h f) hAlt
 theorem satSpecCNF_sound {n N : ℕ} (blocked : List (Fin n ↪ Fin N)) (ot : OrderType N)
     (_h : SATSpec n N ot) :
     Satisfiable (satSpecCNF n N blocked) := by
