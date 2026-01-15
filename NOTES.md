@@ -58,3 +58,5 @@
 - Proved `avoidClause_sound` by deriving alternatingness from “all increasing triples true,” using cycle/swap and Nat-order case splits to avoid `LinearOrder (Fin n)` dependencies; `lake build Erdos107.SATCNF` still passes (warnings only), remaining sorry: `satSpecCNF_sound`.
 - Proved `satSpecCNF_sound` by chaining clause-family soundness with explicit `evalCNF_append` splits; `Erdos107/SATCNF.lean` now has no `sorry` stubs (warnings only).
 - Added Lean DIMACS emitter (`Erdos107/EmitCNF.lean`) and `emit_cnf` executable; added `scripts/check_unsat.sh` for LRAT proof generation/verification (CaDiCaL + cake_lpr).
+- Made SATCNF clause generators computable (added decidable instances for `Distinct3/4/5`, removed `noncomputable` from clause generators and `satSpecCNF`) so `emit_cnf` can build.
+- Fixed `emit_cnf` entrypoint to use a top-level `main`, and reworked blocked-order parsing to be total/length-safe; `scripts/check_unsat.sh` now accepts an optional `blocked.txt`.

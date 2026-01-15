@@ -85,8 +85,19 @@ def allFin (N : ℕ) : List (Fin N) :=
 def Distinct5 {N : ℕ} (a b c d e : Fin N) : Prop :=
   Distinct4 a b c d ∧ a ≠ e ∧ b ≠ e ∧ c ≠ e ∧ d ≠ e
 
-noncomputable def swap12Clauses (N : ℕ) : List (List (Lit (Var N))) := by
-  classical
+instance instDecidableDistinct3 {N : ℕ} (a b c : Fin N) : Decidable (Distinct3 a b c) := by
+  unfold Distinct3
+  infer_instance
+
+instance instDecidableDistinct4 {N : ℕ} (a b c d : Fin N) : Decidable (Distinct4 a b c d) := by
+  unfold Distinct4
+  infer_instance
+
+instance instDecidableDistinct5 {N : ℕ} (a b c d e : Fin N) : Decidable (Distinct5 a b c d e) := by
+  unfold Distinct5
+  infer_instance
+
+def swap12Clauses (N : ℕ) : List (List (Lit (Var N))) := by
   exact
     listBind (allFin N) fun a =>
       listBind (allFin N) fun b =>
@@ -97,8 +108,7 @@ noncomputable def swap12Clauses (N : ℕ) : List (List (Lit (Var N))) := by
             [[Lit.pos x, Lit.pos y], [Lit.neg x, Lit.neg y]]
           else []
 
-noncomputable def cycleClauses (N : ℕ) : List (List (Lit (Var N))) := by
-  classical
+def cycleClauses (N : ℕ) : List (List (Lit (Var N))) := by
   exact
     listBind (allFin N) fun a =>
       listBind (allFin N) fun b =>
@@ -109,8 +119,7 @@ noncomputable def cycleClauses (N : ℕ) : List (List (Lit (Var N))) := by
             [[Lit.neg x, Lit.pos y], [Lit.pos x, Lit.neg y]]
           else []
 
-noncomputable def acyclicClauses (N : ℕ) : List (List (Lit (Var N))) := by
-  classical
+def acyclicClauses (N : ℕ) : List (List (Lit (Var N))) := by
   exact
     listBind (allFin N) fun a =>
       listBind (allFin N) fun b =>
@@ -137,8 +146,7 @@ lemma xnorClauses_sound {N : ℕ} (v : Valuation (Var N)) (q x y : Var N)
   cases hx : v x <;> cases hy : v y <;>
     simp [xnorClauses, evalCNF, evalClause, evalLit, hq, hx, hy]
 
-noncomputable def gpRelClauses (N : ℕ) : List (List (Lit (Var N))) := by
-  classical
+def gpRelClauses (N : ℕ) : List (List (Lit (Var N))) := by
   exact
     listBind (allFin N) fun a =>
       listBind (allFin N) fun b =>
@@ -228,8 +236,7 @@ lemma avoidClause_false_iff {n N : ℕ} (ot : OrderType N) (f : Fin n ↪ Fin N)
       simpa [evalLit, valuationOfOrderType, hall]
     simpa [evalClause] using hfalse'
 
-noncomputable def satSpecCNF (n N : ℕ) (blocked : List (Fin n ↪ Fin N)) : CNF (Var N) := by
-  classical
+def satSpecCNF (n N : ℕ) (blocked : List (Fin n ↪ Fin N)) : CNF (Var N) := by
   exact {
     clauses :=
       swap12Clauses N ++ cycleClauses N ++ acyclicClauses N ++ gpRelClauses N ++
