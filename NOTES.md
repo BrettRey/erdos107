@@ -51,3 +51,7 @@
 - Verified `lake build Erdos107.SATCNF` passes (warnings only) after the new lemma.
 - Restarted the long CEGIS run with the updated script (skip saturated sets), writing to `logs/cegis_6_17.log`.
 - Pivoted away from long full-saturation solves after >16h runtime; stopped the non-plain CaDiCaL run and parked the compute pipeline to focus on Lean proofs (avoidClause/GPRel/satSpec soundness).
+
+## 2026-01-15
+
+- Finished `gpRelClauses_sound` proof in `Erdos107/SATCNF.lean` using `xnorClauses_sound` plus explicit `evalCNF_append` chaining; `lake build Erdos107.SATCNF` now passes (warnings only, remaining sorries in avoidClause/satSpec soundness).

@@ -358,9 +358,183 @@ theorem acyclicClauses_sound {N : ℕ} (ot : OrderType N) (h : OrderType.Acyclic
 
 theorem gpRelClauses_sound {N : ℕ} (ot : OrderType N) (h : OrderType.IsChirotope ot) :
     evalCNF (valuationOfOrderType ot) { clauses := gpRelClauses N } = true := by
-  -- TODO: derive from OrderType.IsChirotope
   classical
-  sorry
+  apply (List.all_eq_true).2
+  intro cl hcl
+  rcases (mem_listBind.mp hcl) with ⟨a, ha, hcl⟩
+  rcases (mem_listBind.mp hcl) with ⟨b, hb, hcl⟩
+  rcases (mem_listBind.mp hcl) with ⟨c, hc, hcl⟩
+  rcases (mem_listBind.mp hcl) with ⟨d, hd, hcl⟩
+  rcases (mem_listBind.mp hcl) with ⟨e, he, hcl⟩
+  by_cases h' : Distinct5 a b c d e
+  · have hcl' : cl ∈
+        (let s_abc := Var.sigma a b c
+         let s_ade := Var.sigma a d e
+         let s_abd := Var.sigma a b d
+         let s_ace := Var.sigma a c e
+         let s_abe := Var.sigma a b e
+         let s_acd := Var.sigma a c d
+         let p1 := Var.gp1 a b c d e
+         let p2 := Var.gp2 a b c d e
+         let p3 := Var.gp3 a b c d e
+         xnorClauses p1 s_abc s_ade ++
+         xnorClauses p2 s_abd s_ace ++
+         xnorClauses p3 s_abe s_acd ++
+         [ [Lit.pos p1, Lit.neg p2, Lit.pos p3]
+         , [Lit.neg p1, Lit.pos p2, Lit.neg p3]
+         ]) := by
+        simpa [h'] using hcl
+    -- show all clauses in this chunk evaluate to true
+    let v := valuationOfOrderType ot
+    let s_abc := Var.sigma a b c
+    let s_ade := Var.sigma a d e
+    let s_abd := Var.sigma a b d
+    let s_ace := Var.sigma a c e
+    let s_abe := Var.sigma a b e
+    let s_acd := Var.sigma a c d
+    let p1 := Var.gp1 a b c d e
+    let p2 := Var.gp2 a b c d e
+    let p3 := Var.gp3 a b c d e
+    have h1 : evalCNF v { clauses := xnorClauses p1 s_abc s_ade } = true := by
+      apply xnorClauses_sound v p1 s_abc s_ade
+      rfl
+    have h2 : evalCNF v { clauses := xnorClauses p2 s_abd s_ace } = true := by
+      apply xnorClauses_sound v p2 s_abd s_ace
+      rfl
+    have h3 : evalCNF v { clauses := xnorClauses p3 s_abe s_acd } = true := by
+      apply xnorClauses_sound v p3 s_abe s_acd
+      rfl
+    -- use chirotope axiom for NAE clauses
+    rcases h' with ⟨h4, hae, hbe, hce, hde⟩
+    rcases h4 with ⟨hab, hac, had, hbc, hbd, hcd⟩
+    have habc : Distinct3 a b c := ⟨hab, hac, hbc⟩
+    have hade : Distinct3 a d e := ⟨had, hae, hde⟩
+    have habd : Distinct3 a b d := ⟨hab, had, hbd⟩
+    have hace : Distinct3 a c e := ⟨hac, hae, hce⟩
+    have habe : Distinct3 a b e := ⟨hab, hae, hbe⟩
+    have hacd : Distinct3 a c d := ⟨hac, had, hcd⟩
+    have hGP := h a b c d e habc hade habd hace habe hacd
+    let q1 := decide (ot.σ a b c = ot.σ a d e)
+    let q2 := decide (ot.σ a b d = ot.σ a c e)
+    let q3 := decide (ot.σ a b e = ot.σ a c d)
+    have hGP' : ¬ (q1 = (!q2) ∧ (!q2) = q3) := by
+      simpa [OrderType.GPRel, OrderType.signMul, q1, q2, q3] using hGP
+    have hv1 : v p1 = q1 := rfl
+    have hv2 : v p2 = q2 := rfl
+    have hv3 : v p3 = q3 := rfl
+    have hcl1 : evalClause v [Lit.pos p1, Lit.neg p2, Lit.pos p3] = true := by
+      -- evaluates to q1 || !q2 || q3
+      by_cases h1' : q1
+      · by_cases h2' : q2
+        · by_cases h3' : q3
+          · simp [evalClause, evalLit, hv1, hv2, hv3, h1', h2', h3']
+          · simp [evalClause, evalLit, hv1, hv2, hv3, h1', h2', h3']
+        · by_cases h3' : q3
+          · simp [evalClause, evalLit, hv1, hv2, hv3, h1', h2', h3']
+          · simp [evalClause, evalLit, hv1, hv2, hv3, h1', h2', h3']
+      · by_cases h2' : q2
+        · by_cases h3' : q3
+          · simp [evalClause, evalLit, hv1, hv2, hv3, h1', h2', h3']
+          · -- q1 = false, q2 = true, q3 = false contradicts GPRel
+            have : False := by
+              have : q1 = (!q2) ∧ (!q2) = q3 := by
+                simp [h1', h2', h3']
+              exact hGP' this
+            exact this.elim
+        · by_cases h3' : q3
+          · simp [evalClause, evalLit, hv1, hv2, hv3, h1', h2', h3']
+          · simp [evalClause, evalLit, hv1, hv2, hv3, h1', h2', h3']
+    have hcl2 : evalClause v [Lit.neg p1, Lit.pos p2, Lit.neg p3] = true := by
+      -- evaluates to !q1 || q2 || !q3
+      by_cases h1' : q1
+      · by_cases h2' : q2
+        · by_cases h3' : q3
+          · simp [evalClause, evalLit, hv1, hv2, hv3, h1', h2', h3']
+          · simp [evalClause, evalLit, hv1, hv2, hv3, h1', h2', h3']
+        · by_cases h3' : q3
+          · -- q1 = true, q2 = false, q3 = true contradicts GPRel
+            have : False := by
+              have : q1 = (!q2) ∧ (!q2) = q3 := by
+                simp [h1', h2', h3']
+              exact hGP' this
+            exact this.elim
+          · simp [evalClause, evalLit, hv1, hv2, hv3, h1', h2', h3']
+      · by_cases h2' : q2
+        · by_cases h3' : q3
+          · simp [evalClause, evalLit, hv1, hv2, hv3, h1', h2', h3']
+          · simp [evalClause, evalLit, hv1, hv2, hv3, h1', h2', h3']
+        · by_cases h3' : q3
+          · simp [evalClause, evalLit, hv1, hv2, hv3, h1', h2', h3']
+          · simp [evalClause, evalLit, hv1, hv2, hv3, h1', h2', h3']
+    have h4 : evalCNF v { clauses := [ [Lit.pos p1, Lit.neg p2, Lit.pos p3]
+                                     , [Lit.neg p1, Lit.pos p2, Lit.neg p3] ] } = true := by
+      simp [evalCNF, hcl1, hcl2]
+    have hchunk :
+        evalCNF v { clauses :=
+          xnorClauses p1 s_abc s_ade ++
+            (xnorClauses p2 s_abd s_ace ++
+              (xnorClauses p3 s_abe s_acd ++
+                [ [Lit.pos p1, Lit.neg p2, Lit.pos p3]
+                , [Lit.neg p1, Lit.pos p2, Lit.neg p3] ])) } = true := by
+      have h12 :
+          evalCNF v { clauses :=
+            xnorClauses p1 s_abc s_ade ++
+              (xnorClauses p2 s_abd s_ace ++
+                (xnorClauses p3 s_abe s_acd ++
+                  [ [Lit.pos p1, Lit.neg p2, Lit.pos p3]
+                  , [Lit.neg p1, Lit.pos p2, Lit.neg p3] ])) } =
+            (evalCNF v { clauses := xnorClauses p1 s_abc s_ade } &&
+             evalCNF v { clauses :=
+               xnorClauses p2 s_abd s_ace ++
+                 (xnorClauses p3 s_abe s_acd ++
+                   [ [Lit.pos p1, Lit.neg p2, Lit.pos p3]
+                   , [Lit.neg p1, Lit.pos p2, Lit.neg p3] ]) }) := by
+        simpa using
+          (evalCNF_append (v := v)
+            (c1 := { clauses := xnorClauses p1 s_abc s_ade })
+            (c2 := { clauses :=
+              xnorClauses p2 s_abd s_ace ++
+                (xnorClauses p3 s_abe s_acd ++
+                  [ [Lit.pos p1, Lit.neg p2, Lit.pos p3]
+                  , [Lit.neg p1, Lit.pos p2, Lit.neg p3] ]) }))
+      have h23 :
+          evalCNF v { clauses :=
+            xnorClauses p2 s_abd s_ace ++
+              (xnorClauses p3 s_abe s_acd ++
+                [ [Lit.pos p1, Lit.neg p2, Lit.pos p3]
+                , [Lit.neg p1, Lit.pos p2, Lit.neg p3] ]) } =
+            (evalCNF v { clauses := xnorClauses p2 s_abd s_ace } &&
+             evalCNF v { clauses :=
+               xnorClauses p3 s_abe s_acd ++
+                 [ [Lit.pos p1, Lit.neg p2, Lit.pos p3]
+                 , [Lit.neg p1, Lit.pos p2, Lit.neg p3] ] }) := by
+        simpa using
+          (evalCNF_append (v := v)
+            (c1 := { clauses := xnorClauses p2 s_abd s_ace })
+            (c2 := { clauses :=
+              xnorClauses p3 s_abe s_acd ++
+                [ [Lit.pos p1, Lit.neg p2, Lit.pos p3]
+                , [Lit.neg p1, Lit.pos p2, Lit.neg p3] ] }))
+      have h34 :
+          evalCNF v { clauses :=
+            xnorClauses p3 s_abe s_acd ++
+              [ [Lit.pos p1, Lit.neg p2, Lit.pos p3]
+              , [Lit.neg p1, Lit.pos p2, Lit.neg p3] ] } =
+            (evalCNF v { clauses := xnorClauses p3 s_abe s_acd } &&
+             evalCNF v { clauses :=
+               [ [Lit.pos p1, Lit.neg p2, Lit.pos p3]
+               , [Lit.neg p1, Lit.pos p2, Lit.neg p3] ] }) := by
+        simpa using
+          (evalCNF_append (v := v)
+            (c1 := { clauses := xnorClauses p3 s_abe s_acd })
+            (c2 := { clauses :=
+              [ [Lit.pos p1, Lit.neg p2, Lit.pos p3]
+              , [Lit.neg p1, Lit.pos p2, Lit.neg p3] ] }))
+      simp [h12, h23, h34, h1, h2, h3, h4]
+    exact (List.all_eq_true).1 hchunk cl hcl'
+  · have : False := by
+      simpa [h'] using hcl
+    exact this.elim
 
 theorem avoidClause_sound {n N : ℕ} (ot : OrderType N)
     (h : OrderType.AvoidsAlternating ot n) (f : Fin n ↪ Fin N) :
