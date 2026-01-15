@@ -130,6 +130,12 @@ def xnorClauses {N : ℕ} (q x y : Var N) : List (List (Lit (Var N))) :=
   , [Lit.neg q, Lit.neg x, Lit.pos y]
   ]
 
+lemma xnorClauses_sound {N : ℕ} (v : Valuation (Var N)) (q x y : Var N)
+    (hq : v q = decide (v x = v y)) :
+    evalCNF v { clauses := xnorClauses q x y } = true := by
+  cases hx : v x <;> cases hy : v y <;>
+    simp [xnorClauses, evalCNF, evalClause, evalLit, hq, hx, hy]
+
 noncomputable def gpRelClauses (N : ℕ) : List (List (Lit (Var N))) := by
   classical
   exact
