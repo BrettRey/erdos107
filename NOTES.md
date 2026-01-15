@@ -56,3 +56,4 @@
 
 - Finished `gpRelClauses_sound` proof in `Erdos107/SATCNF.lean` using `xnorClauses_sound` plus explicit `evalCNF_append` chaining; `lake build Erdos107.SATCNF` now passes (warnings only, remaining sorries in avoidClause/satSpec soundness).
 - Proved `avoidClause_sound` by deriving alternatingness from “all increasing triples true,” using cycle/swap and Nat-order case splits to avoid `LinearOrder (Fin n)` dependencies; `lake build Erdos107.SATCNF` still passes (warnings only), remaining sorry: `satSpecCNF_sound`.
+- Proved `satSpecCNF_sound` by chaining clause-family soundness with explicit `evalCNF_append` splits; `Erdos107/SATCNF.lean` now has no `sorry` stubs (warnings only).

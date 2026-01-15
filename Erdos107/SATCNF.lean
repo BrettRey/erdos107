@@ -653,11 +653,79 @@ theorem avoidClause_sound {n N : ℕ} (ot : OrderType N)
 theorem satSpecCNF_sound {n N : ℕ} (blocked : List (Fin n ↪ Fin N)) (ot : OrderType N)
     (_h : SATSpec n N ot) :
     Satisfiable (satSpecCNF n N blocked) := by
-  -- TODO: prove soundness from SATSpec (swap/cycle/acyclic + GPRel + avoidance).
   classical
-  refine ⟨valuationOfOrderType ot, ?_⟩
-  -- TODO: combine clause soundness lemmas.
-  sorry
+  rcases _h with ⟨hchiro, hacyc, havoid⟩
+  let v := valuationOfOrderType ot
+  refine ⟨v, ?_⟩
+  have hswap : evalCNF v { clauses := swap12Clauses N } = true := by
+    simpa using swap12Clauses_sound ot
+  have hcycle : evalCNF v { clauses := cycleClauses N } = true := by
+    simpa using cycleClauses_sound ot
+  have hac : evalCNF v { clauses := acyclicClauses N } = true := by
+    simpa using acyclicClauses_sound ot hacyc
+  have hgp : evalCNF v { clauses := gpRelClauses N } = true := by
+    simpa using gpRelClauses_sound ot hchiro
+  have hav : evalCNF v { clauses := avoidClauses blocked } = true := by
+    apply (List.all_eq_true).2
+    intro cl hcl
+    rcases (List.mem_map).1 hcl with ⟨f, hf, rfl⟩
+    exact avoidClause_sound ot havoid f
+  -- combine with evalCNF_append chain
+  have h12 :
+      evalCNF v { clauses :=
+        swap12Clauses N ++
+          (cycleClauses N ++
+            (acyclicClauses N ++
+              (gpRelClauses N ++ avoidClauses blocked))) } =
+        (evalCNF v { clauses := swap12Clauses N } &&
+         evalCNF v { clauses :=
+           cycleClauses N ++
+             (acyclicClauses N ++
+               (gpRelClauses N ++ avoidClauses blocked)) }) := by
+    simpa using
+      (evalCNF_append (v := v)
+        (c1 := { clauses := swap12Clauses N })
+        (c2 := { clauses :=
+          cycleClauses N ++
+            (acyclicClauses N ++
+              (gpRelClauses N ++ avoidClauses blocked)) }))
+  have h23 :
+      evalCNF v { clauses :=
+        cycleClauses N ++
+          (acyclicClauses N ++
+            (gpRelClauses N ++ avoidClauses blocked)) } =
+        (evalCNF v { clauses := cycleClauses N } &&
+         evalCNF v { clauses :=
+           acyclicClauses N ++
+             (gpRelClauses N ++ avoidClauses blocked) }) := by
+    simpa using
+      (evalCNF_append (v := v)
+        (c1 := { clauses := cycleClauses N })
+        (c2 := { clauses :=
+          acyclicClauses N ++
+            (gpRelClauses N ++ avoidClauses blocked) }))
+  have h34 :
+      evalCNF v { clauses :=
+        acyclicClauses N ++
+          (gpRelClauses N ++ avoidClauses blocked) } =
+        (evalCNF v { clauses := acyclicClauses N } &&
+         evalCNF v { clauses :=
+           gpRelClauses N ++ avoidClauses blocked }) := by
+    simpa using
+      (evalCNF_append (v := v)
+        (c1 := { clauses := acyclicClauses N })
+        (c2 := { clauses :=
+          gpRelClauses N ++ avoidClauses blocked }))
+  have h45 :
+      evalCNF v { clauses := gpRelClauses N ++ avoidClauses blocked } =
+        (evalCNF v { clauses := gpRelClauses N } &&
+         evalCNF v { clauses := avoidClauses blocked }) := by
+    simpa using
+      (evalCNF_append (v := v)
+        (c1 := { clauses := gpRelClauses N })
+        (c2 := { clauses := avoidClauses blocked }))
+  -- final simp
+  simp [satSpecCNF, h12, h23, h34, h45, hswap, hcycle, hac, hgp, hav]
 
 theorem satCounterexample_imp_satisfiable {n N : ℕ} (blocked : List (Fin n ↪ Fin N)) :
     SATCounterexample n N → Satisfiable (satSpecCNF n N blocked) := by
