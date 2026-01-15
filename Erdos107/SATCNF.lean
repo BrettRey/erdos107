@@ -54,11 +54,12 @@ def Satisfiable {Var : Type} (cnf : CNF Var) : Prop :=
 
 namespace SATCNF
 
-inductive Var (N : ℕ)
+inductive Var (N : ℕ) where
   | sigma (a b c : Fin N)
   | gp1 (a b c d e : Fin N)
   | gp2 (a b c d e : Fin N)
   | gp3 (a b c d e : Fin N)
+deriving DecidableEq
 
 def valuationOfOrderType {N : ℕ} (ot : OrderType N) : Valuation (Var N)
   | Var.sigma a b c => ot.σ a b c

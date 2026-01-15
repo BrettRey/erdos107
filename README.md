@@ -31,12 +31,32 @@ python3 scripts/encode_om3.py --n 4 --N 5 --out om3_4_5.cnf
 cadical om3_4_5.cnf
 ```
 
+## Certified SAT pipeline (Lean CNF + LRAT)
+
+Lean now defines the CNF spec (`Erdos107/SATCNF.lean`) and can emit DIMACS directly.
+
+```bash
+# Emit DIMACS from Lean (no blocked orders yet; this is the base SATSpec CNF)
+lake exe emit_cnf 6 17 out.cnf out.map.txt
+```
+
+To verify UNSAT with a checkable certificate, use the helper script:
+
+```bash
+scripts/check_unsat.sh 6 17 out.cnf
+```
+
+This requires `cadical` and `cake_lpr` on your PATH. The script writes an LRAT proof
+and verifies it with `cake_lpr`.
+
 ## Layout
 
 - `Erdos107/ErdosSzekeres.lean` — geometry + witnesses
 - `Erdos107/OrderType.lean` — abstract order types / chirotopes
 - `Erdos107/Bridge.lean` — reduction statements (stubs)
 - `scripts/encode_om3.py` — SAT encoder for OM3 counterexamples
+- `Erdos107/EmitCNF.lean` — Lean DIMACS emitter for `satSpecCNF`
+- `scripts/check_unsat.sh` — run CaDiCaL + LRAT proof check via `cake_lpr`
 
 ## Notes
 
