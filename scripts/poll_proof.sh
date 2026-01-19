@@ -3,8 +3,8 @@ set -euo pipefail
 
 LOG="erdos107/logs/proof_poll.log"
 SOLVER_LOG="erdos107/logs/cadical_6_17_lrat_nocongruence.log"
-SOLVER_PAT="cadical --congruence=0 --report --lrat=1 /tmp/py_6_17.cnf /tmp/py_6_17.lrat.pipe"
-CHECK_PAT="cake_lpr /tmp/py_6_17.cnf /tmp/py_6_17.lrat.pipe"
+SOLVER_PAT="cadical .*--lrat=1 .*py_6_17.cnf .*py_6_17.lrat.pipe"
+CHECK_PAT="cake_lpr .*py_6_17.cnf .*py_6_17.lrat.pipe"
 
 while true; do
   ts="$(date '+%Y-%m-%d %H:%M:%S')"
