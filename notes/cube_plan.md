@@ -1,7 +1,8 @@
 # Cube-and-Conquer Plan (CaDiCaL inccnf)
 
-This repo includes `scripts/cube_inccnf.py` to generate `p inccnf` files
-with cubes appended as `a ... 0` lines, which CaDiCaL supports.
+This repo includes:
+- `scripts/cube_inccnf.py` to generate `p inccnf` files with cubes appended.
+- `scripts/apply_cube.py` to materialize a single cube as unit clauses.
 
 ## Minimal workflow
 
@@ -25,6 +26,18 @@ cadical /tmp/sig_6_17.inccnf
 
 CaDiCaL will solve each cube in sequence and stop on SAT; UNSAT is reported
 only if all cubes are UNSAT.
+
+## Per-cube workflow (robust)
+
+If the local CaDiCaL build rejects `p inccnf`, use per-cube CNFs instead:
+
+```
+python3 scripts/cube_inccnf.py --cnf /tmp/sig_6_17.cnf --out /tmp/cubes.icnf --vars 12 --cubes-only
+python3 scripts/apply_cube.py --cnf /tmp/sig_6_17.cnf --cube /tmp/cubes.icnf --out /tmp/with_cube.cnf
+cadical /tmp/with_cube.cnf
+```
+
+Then distribute cube indices and solve in parallel.
 
 ## Notes
 

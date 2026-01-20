@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
-"""Encode signotope + canonical position constraints with no-\N-gon avoidance.
+"""Encode signotope + canonical position constraints with no-n-gon avoidance.
 
 This is an alternative to the full OM3 encoding. It uses:
 - Orientation variables o(i,j,k) for i<j<k.
 - Signotope axioms (forbid alternating patterns on 4-tuples).
 - Canonical position symmetry breaking (optional).
-- No-\N-gon constraints via inside-triangle witnesses anchored at the leftmost
+- No-n-gon constraints via inside-triangle witnesses anchored at the leftmost
   vertex of each (n-1)-subset (triangulation trick).
 """
 
