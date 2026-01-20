@@ -31,6 +31,14 @@ def parity_from_sorted(sorted_vals: List[int], seq: List[int]) -> int:
     return inv & 1
 
 
+def add_xnor(clauses: List[Clause], p: int, x: int, y: int) -> None:
+    # p <-> (x == y)  (XNOR)
+    clauses.append([-p, -x, y])
+    clauses.append([-p, -y, x])
+    clauses.append([p, x, y])
+    clauses.append([p, -x, -y])
+
+
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--n", type=int, required=True, help="Convex n-gon size to avoid")
@@ -39,6 +47,7 @@ def main() -> None:
     ap.add_argument("--map-out", type=str, default="", help="Optional map JSON path")
     ap.add_argument("--canonical", action="store_true", help="Enable canonical position symmetry breaking")
     ap.add_argument("--fix-mirror", action="store_true", help="Fix an extra orientation to kill reflection")
+    ap.add_argument("--gp3", action="store_true", help="Add 3-term Grassmann–Plücker relations")
     ap.add_argument("--no-avoid", action="store_true", help="Disable no-n-gon constraints")
     args = ap.parse_args()
 
@@ -91,13 +100,22 @@ def main() -> None:
                     clauses.append([-s1, s2, -s3, s4])
                     clauses.append([s1, -s2, s3, -s4])
 
+    # 3-term Grassmann–Plücker relations (optional)
+    if args.gp3:
+        for a in range(N):
+            others = [x for x in range(N) if x != a]
+            for b, c, d, e in itertools.combinations(others, 4):
+                p1 = next_var; next_var += 1
+                p2 = next_var; next_var += 1
+                p3 = next_var; next_var += 1
+                add_xnor(clauses, p1, ordered_lit(a, b, c), ordered_lit(a, d, e))
+                add_xnor(clauses, p2, ordered_lit(a, b, d), ordered_lit(a, c, e))
+                add_xnor(clauses, p3, ordered_lit(a, b, e), ordered_lit(a, c, d))
+                clauses.append([p1, -p2, p3])
+                clauses.append([-p1, p2, -p3])
+
     # Inside-triangle variables and constraints
     inside_var: Dict[Tuple[int, int, int, int], int] = {}
-
-    def add_equiv_under(t: int, lit1: int, lit2: int) -> None:
-        # t -> (lit1 == lit2)
-        clauses.append([-t, lit1, -lit2])
-        clauses.append([-t, -lit1, lit2])
 
     def inside(p: int, x1: int, a: int, b: int) -> int:
         # x1 < a < b by construction
@@ -110,10 +128,17 @@ def main() -> None:
         inside_var[key] = t
 
         tri_lit = ordered_lit(x1, a, b)
-        # Enforce oriented edges consistent with triangle orientation
-        add_equiv_under(t, ordered_lit(x1, a, p), tri_lit)
-        add_equiv_under(t, ordered_lit(a, b, p), tri_lit)
-        add_equiv_under(t, ordered_lit(b, x1, p), tri_lit)
+        # Enforce t <-> (all three edge orientations match triangle orientation)
+        e1 = next_var; next_var += 1
+        e2 = next_var; next_var += 1
+        e3 = next_var; next_var += 1
+        add_xnor(clauses, e1, ordered_lit(x1, a, p), tri_lit)
+        add_xnor(clauses, e2, ordered_lit(a, b, p), tri_lit)
+        add_xnor(clauses, e3, ordered_lit(b, x1, p), tri_lit)
+        clauses.append([-t, e1])
+        clauses.append([-t, e2])
+        clauses.append([-t, e3])
+        clauses.append([-e1, -e2, -e3, t])
         return t
 
     # No-n-gon: for each n-set, at least one point is inside a triangulated triangle
