@@ -48,6 +48,7 @@ def main() -> None:
     ap.add_argument("--canonical", action="store_true", help="Enable canonical position symmetry breaking")
     ap.add_argument("--fix-mirror", action="store_true", help="Fix an extra orientation to kill reflection")
     ap.add_argument("--gp3", action="store_true", help="Add 3-term Grassmann–Plücker relations")
+    ap.add_argument("--cc", action="store_true", help="Add CC-system interiority/transitivity axioms")
     ap.add_argument("--no-avoid", action="store_true", help="Disable no-n-gon constraints")
     args = ap.parse_args()
 
@@ -113,6 +114,32 @@ def main() -> None:
                 add_xnor(clauses, p3, ordered_lit(a, b, e), ordered_lit(a, c, d))
                 clauses.append([p1, -p2, p3])
                 clauses.append([-p1, p2, -p3])
+
+    # CC-system axioms (interiority + transitivity).
+    if args.cc:
+        # Interiority: if tqr and ptr and pqt then pqr
+        for p, q, r, t in itertools.permutations(range(N), 4):
+            clauses.append(
+                [
+                    -ordered_lit(t, q, r),
+                    -ordered_lit(p, t, r),
+                    -ordered_lit(p, q, t),
+                    ordered_lit(p, q, r),
+                ]
+            )
+
+        # Transitivity: if tsp and tsq and tsr and tpq and tqr then tpr
+        for t, s, p, q, r in itertools.permutations(range(N), 5):
+            clauses.append(
+                [
+                    -ordered_lit(t, s, p),
+                    -ordered_lit(t, s, q),
+                    -ordered_lit(t, s, r),
+                    -ordered_lit(t, p, q),
+                    -ordered_lit(t, q, r),
+                    ordered_lit(t, p, r),
+                ]
+            )
 
     # Inside-triangle variables and constraints
     inside_var: Dict[Tuple[int, int, int, int], int] = {}
