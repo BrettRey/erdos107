@@ -60,11 +60,13 @@ def save_state(
     blocked_orders: set[Tuple[int, ...]],
     flags: Dict[str, bool],
 ) -> None:
+    canon_orders = [tuple(canonical_rotate_min(list(o))) for o in blocked_orders]
+    canon_orders.sort()
     data = {
         "N": N,
         "n": n,
         "it_done": it_done,
-        "blocked_orders": [list(o) for o in blocked_orders],
+        "blocked_orders": [list(o) for o in canon_orders],
         "flags": flags,
     }
     with open(path, "w", encoding="utf-8") as fp:
