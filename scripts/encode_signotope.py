@@ -5,8 +5,8 @@ This is an alternative to the full OM3 encoding. It uses:
 - Orientation variables o(i,j,k) for i<j<k.
 - Signotope axioms (forbid alternating patterns on 4-tuples).
 - Canonical position symmetry breaking (optional).
-- No-n-gon constraints via inside-triangle witnesses anchored at the leftmost
-  vertex of each (n-1)-subset (triangulation trick).
+- No-n-gon constraints via inside-triangle witnesses (optionally anchored at
+  the min-index vertex as a triangulation trick).
 """
 
 from __future__ import annotations
@@ -49,6 +49,11 @@ def main() -> None:
     ap.add_argument("--fix-mirror", action="store_true", help="Fix an extra orientation to kill reflection")
     ap.add_argument("--gp3", action="store_true", help="Add 3-term Grassmann–Plücker relations")
     ap.add_argument("--cc", action="store_true", help="Add CC-system interiority/transitivity axioms")
+    ap.add_argument(
+        "--anchor-leftmost",
+        action="store_true",
+        help="Anchor inside-triangle clauses at min-index vertex (only sound if index order is x-order)",
+    )
     ap.add_argument("--no-avoid", action="store_true", help="Disable no-n-gon constraints")
     args = ap.parse_args()
 
@@ -144,9 +149,9 @@ def main() -> None:
     # Inside-triangle variables and constraints
     inside_var: Dict[Tuple[int, int, int, int], int] = {}
 
-    def inside(p: int, x1: int, a: int, b: int) -> int:
-        # x1 < a < b by construction
-        key = (p, x1, a, b)
+    def inside(p: int, a: int, b: int, c: int) -> int:
+        x1, x2, x3 = sorted([a, b, c])
+        key = (p, x1, x2, x3)
         if key in inside_var:
             return inside_var[key]
         nonlocal next_var
@@ -154,14 +159,14 @@ def main() -> None:
         next_var += 1
         inside_var[key] = t
 
-        tri_lit = ordered_lit(x1, a, b)
+        tri_lit = ordered_lit(x1, x2, x3)
         # Enforce t <-> (all three edge orientations match triangle orientation)
         e1 = next_var; next_var += 1
         e2 = next_var; next_var += 1
         e3 = next_var; next_var += 1
-        add_xnor(clauses, e1, ordered_lit(x1, a, p), tri_lit)
-        add_xnor(clauses, e2, ordered_lit(a, b, p), tri_lit)
-        add_xnor(clauses, e3, ordered_lit(b, x1, p), tri_lit)
+        add_xnor(clauses, e1, ordered_lit(x1, x2, p), tri_lit)
+        add_xnor(clauses, e2, ordered_lit(x2, x3, p), tri_lit)
+        add_xnor(clauses, e3, ordered_lit(x3, x1, p), tri_lit)
         clauses.append([-t, e1])
         clauses.append([-t, e2])
         clauses.append([-t, e3])
@@ -175,13 +180,14 @@ def main() -> None:
             lits: List[int] = []
             for p in subset_list:
                 others = [x for x in subset_list if x != p]
-                x1 = min(others)
-                rem = [x for x in others if x != x1]
-                for a, b in itertools.combinations(rem, 2):
-                    # Ensure x1 < a < b
-                    if not (x1 < a < b):
-                        a, b = sorted([a, b])
-                    lits.append(inside(p, x1, a, b))
+                if args.anchor_leftmost:
+                    x1 = min(others)
+                    rem = [x for x in others if x != x1]
+                    for a, b in itertools.combinations(rem, 2):
+                        lits.append(inside(p, x1, a, b))
+                else:
+                    for a, b, c in itertools.combinations(others, 3):
+                        lits.append(inside(p, a, b, c))
             clauses.append(lits)
 
     # Write CNF
