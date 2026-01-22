@@ -102,12 +102,18 @@ def load_sigma(path: str) -> Tuple[int, int, Dict[Tuple[int, int, int], bool]]:
 
 def main() -> None:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--json", required=True, help="Sigma JSON path (from encode_om3.py --dump-sigma)")
+    ap.add_argument("--json", required=False, help="Sigma JSON path (from encode_om3.py --dump-sigma)")
+    ap.add_argument("--sigma-json", required=False, help="Alias for --json")
     ap.add_argument("--n", type=int, default=None, help="Optional n override")
     ap.add_argument("--N", type=int, default=None, help="Optional N override")
+    ap.add_argument("--witness-out", type=str, default="", help="Optional JSON witness output path")
     args = ap.parse_args()
 
-    N, n, sigma = load_sigma(args.json)
+    path = args.sigma_json or args.json
+    if not path:
+        raise SystemExit("must provide --json (or --sigma-json)")
+
+    N, n, sigma = load_sigma(path)
     if args.N is not None and args.N != N:
         raise SystemExit(f"JSON N={N} does not match --N {args.N}")
     if args.n is not None and args.n != n:
@@ -192,6 +198,9 @@ def main() -> None:
 
     # Acyclic
     acyclic_violation = None
+    acyclic_violations = 0
+    acyclic_sets: set[Tuple[int, int, int, int]] = set()
+    acyclic_examples: List[Tuple[int, int, int, int]] = []
     for a in range(N):
         for b in range(N):
             if b == a:
@@ -205,14 +214,14 @@ def main() -> None:
                     if sigma[(a, b, c)] and (not sigma[(d, b, c)]) and (not sigma[(a, d, c)]) and (
                         not sigma[(a, b, d)]
                     ):
-                        acyclic_violation = (a, b, c, d)
-                        break
-                if acyclic_violation:
-                    break
-            if acyclic_violation:
-                break
-        if acyclic_violation:
-            break
+                        acyclic_violations += 1
+                        s = tuple(sorted((a, b, c, d)))
+                        if s not in acyclic_sets:
+                            acyclic_sets.add(s)
+                            if len(acyclic_examples) < 5:
+                                acyclic_examples.append(s)
+                        if acyclic_violation is None:
+                            acyclic_violation = (a, b, c, d)
 
     alt = find_alternating_sequence(N, n, sigma)
 
@@ -231,12 +240,29 @@ def main() -> None:
         print("GPRel: OK")
     if acyclic_violation:
         print(f"acyclic violation at {acyclic_violation}")
+        print(f"acyclic violations: {acyclic_violations} (distinct 4-sets: {len(acyclic_sets)})")
+        if acyclic_examples:
+            print(f"acyclic example 4-sets: {acyclic_examples}")
     else:
         print("acyclic: OK")
     if alt is None:
         print("alternating n-sequence: NONE found")
     else:
         print(f"alternating n-sequence: {alt}")
+
+    if args.witness_out:
+        out = {"N": N, "n": n}
+        if acyclic_violation is not None:
+            out["type"] = "acyclic"
+            out["witness"] = list(acyclic_violation)
+            out["distinct_4sets"] = len(acyclic_sets)
+        elif alt is not None:
+            out["type"] = "alternating"
+            out["witness"] = list(alt)
+        else:
+            out["type"] = "none"
+        with open(args.witness_out, "w", encoding="utf-8") as fp:
+            json.dump(out, fp, indent=2)
 
 
 if __name__ == "__main__":
