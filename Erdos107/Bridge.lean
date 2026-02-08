@@ -120,7 +120,6 @@ lemma det3_ne_zero_of_generalPositionFn {N : ℕ} (p : Fin N → Plane)
   have hlin_sub :
       LinearIndependent ℝ (fun t : {x : Fin 3 // x ≠ (0 : Fin 3)} => (p' t -ᵥ p' 0)) :=
     (affineIndependent_iff_linearIndependent_vsub (k := ℝ) p' (0 : Fin 3)).1 hAff
-
   -- Injective map from `Fin 2` into the subtype `{x : Fin 3 // x ≠ 0}`.
   let g : Fin 2 → {x : Fin 3 // x ≠ (0 : Fin 3)} := fun t => ⟨Fin.succ t, by simp⟩
   have hg : Function.Injective g := by
@@ -128,7 +127,6 @@ lemma det3_ne_zero_of_generalPositionFn {N : ℕ} (p : Fin N → Plane)
     have : (Fin.succ a : Fin 3) = Fin.succ b := by
       simpa [g] using congrArg Subtype.val h
     exact Fin.succ_inj.mp this
-
   have hlin :
       LinearIndependent ℝ ![p j - p i, p k - p i] := by
     have hlin' :
@@ -141,16 +139,14 @@ lemma det3_ne_zero_of_generalPositionFn {N : ℕ} (p : Fin N → Plane)
     have hfun :
         (fun t : Fin 2 => (p' (g t) - p' 0)) =
           ![p j - p i, p k - p i] := by
-      ext t <;> fin_cases t <;> simp [p', g]
+      ext t; fin_cases t <;> simp [p', g]
     simpa [hfun] using hlin''
-
   -- Now show the determinant is nonzero; otherwise the two vectors are dependent.
   intro hdet
   set u : Plane := p j - p i
   set v : Plane := p k - p i
   have hdet' : det2 u v = 0 := by
     simpa [det3, u, v] using hdet
-
   by_cases h0 : u 0 = 0 ∧ v 0 = 0
   · -- Use the second coordinate if the first is zero.
     have hcomb : (v 1) • u + (-u 1) • v = 0 := by
@@ -177,7 +173,7 @@ lemma det3_ne_zero_of_generalPositionFn {N : ℕ} (p : Fin N → Plane)
         have hdet''' : v 0 * u 1 - u 0 * v 1 = 0 := by
           calc
             v 0 * u 1 - u 0 * v 1 = -(u 0 * v 1 - u 1 * v 0) := by ring_nf
-            _ = 0 := by simpa [hdet'']
+            _ = 0 := by simp [hdet'']
         -- v0*u1 - u0*v1 = 0
         simpa [sub_eq_add_neg] using hdet'''
     have hz : v 0 = 0 ∧ -u 0 = 0 :=
@@ -202,7 +198,7 @@ def orderTypeOfPoints {N : ℕ} (p : Fin N → Plane) (hp : GeneralPositionFn p)
 , cycle := by
     intro i j k hijk
     -- no nonzero lemma needed: `det3` is literally invariant under a cyclic shift
-    simpa [(det3_cycle (p := p) i j k).symm] }
+    simp [det3_cycle (p := p) i j k] }
 
 /-- The induced order type satisfies the rank-3 chirotope (Grassmann–Plücker) axiom scheme. -/
 theorem orderTypeOfPoints_isChirotope {N : ℕ} (p : Fin N → Plane) (hp : GeneralPositionFn p) :
@@ -283,31 +279,25 @@ theorem orderTypeOfPoints_acyclic {N : ℕ} (p : Fin N → Plane) (hp : GeneralP
   by_cases hpos : det3 p a b c > 0
   · -- If `d` is to the left of any edge, we are done.
     by_cases h1 : det3 p d b c > 0
-    · right; left; simpa [orderTypeOfPoints, h1]
+    · right; left; simp [orderTypeOfPoints, h1]
     by_cases h2 : det3 p a d c > 0
-    · right; right; left; simpa [orderTypeOfPoints, h2]
+    · right; right; left; simp [orderTypeOfPoints, h2]
     by_cases h3 : det3 p a b d > 0
-    · right; right; right; simpa [orderTypeOfPoints, h3]
-
+    · right; right; right; simp [orderTypeOfPoints, h3]
     -- Otherwise all three are nonpositive; contradict area decomposition.
     have h1le : det3 p d b c ≤ 0 := le_of_not_gt h1
     have h2le : det3 p a d c ≤ 0 := le_of_not_gt h2
     have h3le : det3 p a b d ≤ 0 := le_of_not_gt h3
-
     have h1le' : det3 p b c d ≤ 0 := by
       simpa [det3_cycle (p := p) d b c] using h1le
-
     have h2le' : det3 p c a d ≤ 0 := by
       have h2le1 : det3 p d c a ≤ 0 := by
         simpa [det3_cycle (p := p) a d c] using h2le
       simpa [det3_cycle (p := p) d c a] using h2le1
-
     have hsum : det3 p a b d + det3 p b c d + det3 p c a d = det3 p a b c :=
       det3_sum (p := p) a b c d
-
     have hsumle : det3 p a b d + det3 p b c d + det3 p c a d ≤ 0 := by
       linarith [h1le', h2le', h3le]
-
     have hle : det3 p a b c ≤ 0 := by
       linarith [hsum, hsumle]
     exact (False.elim (not_le_of_gt hpos hle))
