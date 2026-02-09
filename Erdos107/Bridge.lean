@@ -1,4 +1,5 @@
 import Mathlib.Tactic
+import Mathlib.Data.Finset.Sort
 
 import Erdos107.ErdosSzekeres
 import Erdos107.OrderType
@@ -322,6 +323,101 @@ lemma det3_same_sign_of_convexHull_triangle {N : ℕ} (p : Fin N → Plane)
     simp [hpos, hpos']
   · have hpos' : ¬ det3 p a b d > 0 := (not_congr hiff).mpr hpos
     simp [hpos, hpos']
+
+
+/-- `altσ` is preserved under order embeddings. -/
+lemma altσ_orderEmb {m n : ℕ} (f : Fin m ↪o Fin n) (i j k : Fin m) :
+    OrderType.altσ (f i) (f j) (f k) = OrderType.altσ i j k := by
+  classical
+  simp [OrderType.altσ, OrderType.CyclicTriple, f.lt_iff_lt]
+
+
+/-- Computable version of `altσ`. -/
+def altσc {n : ℕ} (i j k : Fin n) : Bool :=
+  decide ((i < j ∧ j < k) ∨ (j < k ∧ k < i) ∨ (k < i ∧ i < j))
+
+lemma altσ_eq_altσc {n : ℕ} (i j k : Fin n) : OrderType.altσ i j k = altσc i j k := by
+  simp [OrderType.altσ, OrderType.CyclicTriple, altσc]
+
+set_option linter.style.nativeDecide false in
+/-- On `Fin 4`, the alternating pattern cannot make all four edge orientations
+    equal (computable). -/
+lemma altσc_not_all_eq_fin4 :
+    ∀ a b c d : Fin 4,
+      Distinct4 a b c d →
+        ¬ (altσc a b c = altσc d b c ∧
+            altσc d b c = altσc a d c ∧
+            altσc a d c = altσc a b d) := by
+  native_decide
+
+/-- On `Fin 4`, the alternating pattern cannot make all four edge orientations equal. -/
+lemma altσ_not_all_eq_fin4 :
+    ∀ a b c d : Fin 4,
+      Distinct4 a b c d →
+        ¬ (OrderType.altσ a b c = OrderType.altσ d b c ∧
+            OrderType.altσ d b c = OrderType.altσ a d c ∧
+            OrderType.altσ a d c = OrderType.altσ a b d) := by
+  intro a b c d hdistinct h
+  have h' :
+      ¬ (altσc a b c = altσc d b c ∧ altσc d b c = altσc a d c ∧ altσc a d c = altσc a b d) :=
+    altσc_not_all_eq_fin4 a b c d hdistinct
+  apply h'
+  -- rewrite altσ to altσc
+  simpa [altσ_eq_altσc] using h
+
+/-- For any four distinct indices, the alternating pattern cannot make all four
+    edge orientations equal. -/
+lemma altσ_not_all_eq {n : ℕ} {a b c d : Fin n} (habcd : Distinct4 a b c d) :
+    ¬ (OrderType.altσ a b c = OrderType.altσ d b c ∧
+        OrderType.altσ d b c = OrderType.altσ a d c ∧
+        OrderType.altσ a d c = OrderType.altσ a b d) := by
+  classical
+  let s : Finset (Fin n) := {a, b, c, d}
+  have hs_card : s.card = 4 := by
+    simp [s, habcd.1, habcd.2.1, habcd.2.2.1, habcd.2.2.2.1,
+      habcd.2.2.2.2.1, habcd.2.2.2.2.2]
+  let f : Fin 4 ↪o Fin n :=
+    s.orderEmbOfFin hs_card
+  have hs_range : Set.range f = s := by
+    simpa [f] using (Finset.range_orderEmbOfFin s hs_card)
+  have ha : a ∈ s := by simp [s]
+  have hb : b ∈ s := by simp [s]
+  have hc : c ∈ s := by simp [s]
+  have hd : d ∈ s := by simp [s]
+  have ha_range : a ∈ Set.range f := by simpa [hs_range] using ha
+  rcases ha_range with ⟨ia, hia⟩
+  have hb_range : b ∈ Set.range f := by simpa [hs_range] using hb
+  rcases hb_range with ⟨ib, hib⟩
+  have hc_range : c ∈ Set.range f := by simpa [hs_range] using hc
+  rcases hc_range with ⟨ic, hic⟩
+  have hd_range : d ∈ Set.range f := by simpa [hs_range] using hd
+  rcases hd_range with ⟨id, hid⟩
+  have hdistinct : Distinct4 ia ib ic id := by
+    refine ⟨?_, ?_, ?_, ?_, ?_, ?_⟩
+    · intro h; apply habcd.1; simpa [hia, hib] using congrArg f h
+    · intro h; apply habcd.2.1; simpa [hia, hic] using congrArg f h
+    · intro h; apply habcd.2.2.1; simpa [hia, hid] using congrArg f h
+    · intro h; apply habcd.2.2.2.1; simpa [hib, hic] using congrArg f h
+    · intro h; apply habcd.2.2.2.2.1; simpa [hib, hid] using congrArg f h
+    · intro h; apply habcd.2.2.2.2.2; simpa [hic, hid] using congrArg f h
+  have habc : OrderType.altσ a b c = OrderType.altσ ia ib ic := by
+    simpa [hia, hib, hic] using (altσ_orderEmb f ia ib ic)
+  have hdbc : OrderType.altσ d b c = OrderType.altσ id ib ic := by
+    simpa [hid, hib, hic] using (altσ_orderEmb f id ib ic)
+  have hadc : OrderType.altσ a d c = OrderType.altσ ia id ic := by
+    simpa [hia, hid, hic] using (altσ_orderEmb f ia id ic)
+  have habd : OrderType.altσ a b d = OrderType.altσ ia ib id := by
+    simpa [hia, hib, hid] using (altσ_orderEmb f ia ib id)
+  intro h
+  have h' :
+      OrderType.altσ ia ib ic = OrderType.altσ id ib ic ∧
+      OrderType.altσ id ib ic = OrderType.altσ ia id ic ∧
+      OrderType.altσ ia id ic = OrderType.altσ ia ib id := by
+    refine ⟨?_, ?_, ?_⟩
+    · simpa [habc, hdbc] using h.1
+    · simpa [hdbc, hadc] using h.2.1
+    · simpa [hadc, habd] using h.2.2
+  exact altσ_not_all_eq_fin4 ia ib ic id hdistinct h'
 /-- The (abstract) order type induced by a labelled point configuration in general position. -/
 def orderTypeOfPoints {N : ℕ} (p : Fin N → Plane) (hp : GeneralPositionFn p) :
     ErdosSzekeres.OrderType N :=
