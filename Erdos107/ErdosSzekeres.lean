@@ -22,6 +22,9 @@ import Mathlib.Analysis.Convex.Independent
 import Mathlib.LinearAlgebra.AffineSpace.Independent
 import Mathlib.Data.Finset.Card
 import Mathlib.Data.Real.Basic
+import Mathlib.Analysis.Convex.Segment
+import Mathlib.LinearAlgebra.AffineSpace.FiniteDimensional
+import Mathlib.Tactic
 
 open Set
 open scoped Pointwise
@@ -118,10 +121,160 @@ lemma ConvexPosition.mono {s t : Set Plane} (ht : t ⊆ s) (hs : ConvexPosition 
   simpa [ConvexPosition] using
     (ConvexIndependent.mono (s := t) (t := s) (hc := by simpa [ConvexPosition] using hs) ht)
 
+/-- For three collinear points, one lies in the convex hull of the other two. -/
+private lemma collinear_three_mem_convexHull {a b c : Plane}
+    (hcol : Collinear ℝ ({a, b, c} : Set Plane)) :
+    a ∈ convexHull ℝ ({b, c} : Set Plane) ∨
+      b ∈ convexHull ℝ ({a, c} : Set Plane) ∨
+      c ∈ convexHull ℝ ({a, b} : Set Plane) := by
+  classical
+  rcases (collinear_iff_exists_forall_eq_smul_vadd (k := ℝ) (s := ({a, b, c} : Set Plane))).1 hcol with
+    ⟨p0, v, hv⟩
+  rcases hv a (by simp) with ⟨ra, rfl⟩
+  rcases hv b (by simp) with ⟨rb, rfl⟩
+  rcases hv c (by simp) with ⟨rc, rfl⟩
+
+  have mem_between :
+      ∀ {r1 r2 r3 : ℝ},
+        r1 ≤ r2 → r2 ≤ r3 →
+          (r2 • v + p0) ∈ convexHull ℝ ({r1 • v + p0, r3 • v + p0} : Set Plane) := by
+    intro r1 r2 r3 h1 h2
+    by_cases hne : r1 = r3
+    · have hr2 : r2 = r1 := by linarith [h1, h2, hne]
+      subst r3
+      subst r2
+      have : (r1 • v + p0) ∈ segment ℝ (r1 • v + p0) (r1 • v + p0) := by
+        simpa using (left_mem_segment ℝ (r1 • v + p0) (r1 • v + p0))
+      simpa [convexHull_pair] using this
+    · have hle : r1 ≤ r3 := le_trans h1 h2
+      have hlt : r1 < r3 := lt_of_le_of_ne hle hne
+      have hdenom : 0 < r3 - r1 := sub_pos.mpr hlt
+      let t : ℝ := (r2 - r1) / (r3 - r1)
+      have ht0 : 0 ≤ t := by
+        have hnum : 0 ≤ r2 - r1 := sub_nonneg.mpr h1
+        exact div_nonneg hnum (le_of_lt hdenom)
+      have ht1 : t ≤ 1 := by
+        have hnum : r2 - r1 ≤ r3 - r1 := sub_le_sub_right h2 _
+        have : (r2 - r1) / (r3 - r1) ≤ 1 := (div_le_one hdenom).2 hnum
+        simpa [t] using this
+      have ht : t * (r3 - r1) = r2 - r1 := by
+        have hdenom' : r3 - r1 ≠ 0 := by linarith
+        dsimp [t]
+        field_simp [hdenom']
+      have hr2 : r2 = (1 - t) * r1 + t * r3 := by
+        calc
+          r2 = r1 + (r2 - r1) := by ring
+          _ = r1 + t * (r3 - r1) := by simp [ht]
+          _ = (1 - t) * r1 + t * r3 := by ring
+      have hb_line : r2 • v + p0 = AffineMap.lineMap (r1 • v + p0) (r3 • v + p0) t := by
+        -- use lineMap formula in modules
+        ext i
+        simp [AffineMap.lineMap_apply_module, hr2, vadd_eq_add, smul_add, add_smul, mul_add,
+          add_comm, add_left_comm, add_assoc]
+        ring
+      have htIcc : t ∈ Icc (0 : ℝ) 1 := ⟨ht0, ht1⟩
+      have hb_seg : r2 • v + p0 ∈ segment ℝ (r1 • v + p0) (r3 • v + p0) := by
+        have : AffineMap.lineMap (r1 • v + p0) (r3 • v + p0) t ∈
+            segment ℝ (r1 • v + p0) (r3 • v + p0) := by
+          have : AffineMap.lineMap (r1 • v + p0) (r3 • v + p0) t ∈
+              AffineMap.lineMap (r1 • v + p0) (r3 • v + p0) '' Icc (0 : ℝ) 1 :=
+            mem_image_of_mem _ htIcc
+          simpa [segment_eq_image_lineMap] using this
+        simpa [hb_line] using this
+      simpa [convexHull_pair] using hb_seg
+
+  have hmid :
+      (ra ≤ rb ∧ rb ≤ rc) ∨
+        (rb ≤ ra ∧ ra ≤ rc) ∨
+        (ra ≤ rc ∧ rc ≤ rb) ∨
+        (rc ≤ rb ∧ rb ≤ ra) ∨
+        (rb ≤ rc ∧ rc ≤ ra) ∨
+        (rc ≤ ra ∧ ra ≤ rb) := by
+    have h_ab := le_total ra rb
+    have h_bc := le_total rb rc
+    have h_ac := le_total ra rc
+    rcases h_ab with h_ab | h_ab
+    · rcases h_bc with h_bc | h_bc
+      · exact Or.inl ⟨h_ab, h_bc⟩
+      · rcases h_ac with h_ac | h_ac
+        · exact Or.inr (Or.inr (Or.inl ⟨h_ac, h_bc⟩))
+        · exact Or.inr (Or.inr (Or.inr (Or.inr (Or.inr ⟨h_ac, h_ab⟩))))
+    · rcases h_bc with h_bc | h_bc
+      · rcases h_ac with h_ac | h_ac
+        · exact Or.inr (Or.inl ⟨h_ab, h_ac⟩)
+        · exact Or.inr (Or.inr (Or.inr (Or.inr (Or.inl ⟨h_bc, h_ac⟩))))
+      · exact Or.inr (Or.inr (Or.inr (Or.inl ⟨h_bc, h_ab⟩)))
+
+  rcases hmid with hmid | hmid
+  · -- ra ≤ rb ≤ rc
+    right; left
+    simpa using (mem_between hmid.1 hmid.2)
+  · rcases hmid with hmid | hmid
+    · -- rb ≤ ra ≤ rc
+      left
+      simpa using (mem_between hmid.1 hmid.2)
+    · rcases hmid with hmid | hmid
+      · -- ra ≤ rc ≤ rb
+        right; right
+        simpa using (mem_between hmid.1 hmid.2)
+      · rcases hmid with hmid | hmid
+        · -- rc ≤ rb ≤ ra
+          right; left
+          have hb : (rb • v + p0) ∈ convexHull ℝ ({rc • v + p0, ra • v + p0} : Set Plane) :=
+            mem_between hmid.1 hmid.2
+          simpa [Set.pair_comm] using hb
+        · rcases hmid with hmid | hmid
+          · -- rb ≤ rc ≤ ra
+            right; right
+            have hc : (rc • v + p0) ∈ convexHull ℝ ({rb • v + p0, ra • v + p0} : Set Plane) :=
+              mem_between hmid.1 hmid.2
+            simpa [Set.pair_comm] using hc
+          · -- rc ≤ ra ≤ rb
+            left
+            have ha : (ra • v + p0) ∈ convexHull ℝ ({rc • v + p0, rb • v + p0} : Set Plane) :=
+              mem_between hmid.1 hmid.2
+            simpa [Set.pair_comm] using ha
+
 /-- ConvexPosition implies GeneralPosition: if every point is a vertex of the
     convex hull, then no three can be collinear. -/
 lemma ConvexPosition.generalPosition (hs : ConvexPosition s) : GeneralPosition s := by
-  sorry -- TODO: prove this
+  classical
+  intro a b c ha hb hc hneab hneac hnebc
+  have hnotmem : ∀ x ∈ s, x ∉ convexHull ℝ (s \ {x}) := by
+    simpa [ConvexPosition] using
+      (convexIndependent_set_iff_notMem_convexHull_diff (𝕜 := ℝ) (s := s)).1 hs
+  have ha_not : a ∉ convexHull ℝ ({b, c} : Set Plane) := by
+    intro ha_mem
+    have hsubset : ({b, c} : Set Plane) ⊆ s \ {a} := by
+      intro x hx
+      rcases hx with rfl | rfl
+      · exact ⟨hb, by simpa [Set.mem_singleton_iff] using hneab.symm⟩
+      · exact ⟨hc, by simpa [Set.mem_singleton_iff] using hneac.symm⟩
+    exact (hnotmem a ha) (convexHull_mono hsubset ha_mem)
+  have hb_not : b ∉ convexHull ℝ ({a, c} : Set Plane) := by
+    intro hb_mem
+    have hsubset : ({a, c} : Set Plane) ⊆ s \ {b} := by
+      intro x hx
+      rcases hx with rfl | rfl
+      · exact ⟨ha, by simpa [Set.mem_singleton_iff] using hneab⟩
+      · exact ⟨hc, by simpa [Set.mem_singleton_iff] using hnebc.symm⟩
+    exact (hnotmem b hb) (convexHull_mono hsubset hb_mem)
+  have hc_not : c ∉ convexHull ℝ ({a, b} : Set Plane) := by
+    intro hc_mem
+    have hsubset : ({a, b} : Set Plane) ⊆ s \ {c} := by
+      intro x hx
+      rcases hx with rfl | rfl
+      · exact ⟨ha, by simpa [Set.mem_singleton_iff] using hneac⟩
+      · exact ⟨hb, by simpa [Set.mem_singleton_iff] using hnebc⟩
+    exact (hnotmem c hc) (convexHull_mono hsubset hc_mem)
+  have hnotcol : ¬ Collinear ℝ ({a, b, c} : Set Plane) := by
+    intro hcol
+    rcases collinear_three_mem_convexHull hcol with h | h
+    · exact ha_not h
+    · rcases h with h | h
+      · exact hb_not h
+      · exact hc_not h
+  exact (affineIndependent_iff_not_collinear_set (k := ℝ)).2 hnotcol
 
 namespace Finset
 
