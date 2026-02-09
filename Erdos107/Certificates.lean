@@ -20,9 +20,20 @@ def signotope_lrat_6_17_sha256 : String :=
 /-- External UNSAT certificate for the signotope CNF instance. -/
 axiom signotope_unsat_6_17 : ¬ Satisfiable signotope_cnf_6_17
 
-/-- Bridge axiom: UNSAT of the signotope CNF implies the ES witness predicate. -/
-axiom signotope_unsat_imp_ESWitnessFn_6_17 :
-  ¬ Satisfiable signotope_cnf_6_17 → ESWitnessFn 6 17
+/-- Soundness axiom: a geometric counterexample induces a satisfying assignment. -/
+axiom signotope_geom_sound_6_17 :
+  (∃ p : Fin 17 → Plane, GeneralPositionFn p ∧ ¬ HasConvexSubset (n := 6) p) →
+    Satisfiable signotope_cnf_6_17
+
+/-- UNSAT of the signotope CNF implies the ES witness predicate. -/
+theorem signotope_unsat_imp_ESWitnessFn_6_17 :
+  ¬ Satisfiable signotope_cnf_6_17 → ESWitnessFn 6 17 := by
+  intro hunsat p hp
+  by_contra hconv
+  have hgeom : ∃ p : Fin 17 → Plane, GeneralPositionFn p ∧ ¬ HasConvexSubset (n := 6) p :=
+    ⟨p, hp, hconv⟩
+  have hsat : Satisfiable signotope_cnf_6_17 := signotope_geom_sound_6_17 hgeom
+  exact hunsat hsat
 
 /-- Lower-bound witness: a 16-point set in general position with no convex 6-gon. -/
 axiom lower_bound_witness_6_16 :
