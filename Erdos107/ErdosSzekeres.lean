@@ -354,8 +354,7 @@ axiom ES_lower_bound (n : ℕ) (hn : n ≥ 3) : ES n ≥ 2^(n-2) + 1
 
 /-- The ES(6) = 17 theorem (Szekeres & Peters, 2006)
     This was proved via SAT solving. -/
-theorem ES_six : ES 6 = 17 := by
-  sorry -- SAT-based proof
+axiom ES_six : ES 6 = 17
 
 /-- The ES(7) = 33 conjecture -/
 theorem ES_seven : ES 7 = 33 := by
