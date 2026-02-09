@@ -166,25 +166,38 @@ def CCTransitivity {N : ℕ} (ot : OrderType N) : Prop :=
 def CCSystem {N : ℕ} (ot : OrderType N) : Prop :=
   CCInteriority ot ∧ CCTransitivity ot
 
-/-- CC-interiority follows from chirotope + acyclic axioms. -/
-axiom ccInteriority_of_chirotope_acyclic {N : ℕ} {ot : OrderType N} :
-    OrderType.IsChirotope ot → OrderType.Acyclic ot → CCInteriority ot
+/-- CC-interiority for real points in general position. -/
+theorem orderTypeOfPoints_ccInteriority {N : ℕ} (p : Fin N → Plane)
+    (hp : GeneralPositionFn p) : CCInteriority (orderTypeOfPoints p hp) := by
+  classical
+  intro i j k t hdist htjk hitk hijk
+  have htjk' : det3 p t j k > 0 := by
+    simpa [orderTypeOfPoints] using htjk
+  have hitk' : det3 p i t k > 0 := by
+    simpa [orderTypeOfPoints] using hitk
+  have hijk' : det3 p i j t > 0 := by
+    simpa [orderTypeOfPoints] using hijk
+  have h1 : det3 p j k t > 0 := by
+    simpa [det3_cycle (p := p) t j k] using htjk'
+  have h2a : det3 p t k i > 0 := by
+    simpa [det3_cycle (p := p) i t k] using hitk'
+  have h2 : det3 p k i t > 0 := by
+    simpa [det3_cycle (p := p) t k i] using h2a
+  have hsum : det3 p i j t + det3 p j k t + det3 p k i t = det3 p i j k :=
+    det3_sum (p := p) i j k t
+  have hpos : det3 p i j k > 0 := by
+    linarith [hsum, hijk', h1, h2]
+  simpa [orderTypeOfPoints] using hpos
 
 /-- CC-transitivity follows from chirotope + acyclic axioms. -/
 axiom ccTransitivity_of_chirotope_acyclic {N : ℕ} {ot : OrderType N} :
     OrderType.IsChirotope ot → OrderType.Acyclic ot → CCTransitivity ot
 
-/-- CC-systems are implied by the chirotope + acyclic axioms. -/
-theorem ccSystem_of_chirotope_acyclic {N : ℕ} {ot : OrderType N} :
-    OrderType.IsChirotope ot → OrderType.Acyclic ot → CCSystem ot := by
-  intro hch hacyc
-  exact ⟨ccInteriority_of_chirotope_acyclic hch hacyc,
-    ccTransitivity_of_chirotope_acyclic hch hacyc⟩
-
 /-- For real points in general position, the induced order type satisfies CC-system axioms. -/
 theorem orderTypeOfPoints_ccSystem {N : ℕ} (p : Fin N → Plane)
-    (hp : GeneralPositionFn p) : CCSystem (orderTypeOfPoints p hp) :=
-  ccSystem_of_chirotope_acyclic (orderTypeOfPoints_isChirotope p hp)
+    (hp : GeneralPositionFn p) : CCSystem (orderTypeOfPoints p hp) := by
+  refine ⟨orderTypeOfPoints_ccInteriority (p := p) (hp := hp), ?_⟩
+  exact ccTransitivity_of_chirotope_acyclic (orderTypeOfPoints_isChirotope p hp)
     (orderTypeOfPoints_acyclic p hp)
 
 /-- No-convex-6-gon condition in inside-triangle form (for a fixed order type). -/
