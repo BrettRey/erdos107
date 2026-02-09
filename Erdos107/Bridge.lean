@@ -93,6 +93,41 @@ lemma det3_affine_combination {N : ℕ} (p : Fin N → Plane) (a b c d : Fin N)
             simp [det2_self]
     _ = t * det3 p a b c := by
             simp [det3]
+
+
+/-- Any point in the convex hull of a triangle is an affine combination of its vertices. -/
+lemma convexHull_triangle_affine_combination {N : ℕ} {p : Fin N → Plane}
+    {a b c d : Fin N} (hab : p a ≠ p b) (hac : p a ≠ p c) (hbc : p b ≠ p c)
+    (hd : p d ∈ convexHull ℝ ({p a, p b, p c} : Set Plane)) :
+    ∃ r s t : ℝ,
+      0 ≤ r ∧ 0 ≤ s ∧ 0 ≤ t ∧ r + s + t = 1 ∧
+        p d = r • p a + s • p b + t • p c := by
+  classical
+  let sset : Finset Plane := {p a, p b, p c}
+  have hd' : p d ∈ convexHull ℝ (sset : Set Plane) := by
+    simpa [sset] using hd
+  rcases (Finset.mem_convexHull (s := sset) (x := p d)).1 hd' with ⟨w, hw0, hw1, hcm⟩
+  have hsum : ∑ y ∈ sset, w y • y = p d := by
+    have hmass := (Finset.centerMass_eq_of_sum_1 (t := sset) (w := w) (z := id) hw1)
+    simpa [hmass] using hcm
+  let r : ℝ := w (p a)
+  let s : ℝ := w (p b)
+  let t : ℝ := w (p c)
+  have hr : 0 ≤ r := hw0 _ (by simp [sset])
+  have hs : 0 ≤ s := hw0 _ (by simp [sset])
+  have ht : 0 ≤ t := hw0 _ (by simp [sset])
+  have hsum' : r + s + t = 1 := by
+    have : ∑ y ∈ sset, w y = 1 := hw1
+    simpa [sset, r, s, t, hab, hac, hbc, add_assoc, add_comm, add_left_comm] using this
+  have hsum'' : ∑ y ∈ sset, w y • y = r • p a + s • p b + t • p c := by
+    simp [sset, r, s, t, hab, hac, hbc, add_assoc]
+  refine ⟨r, s, t, hr, hs, ht, hsum', ?_⟩
+  -- rewrite the sum representation
+  have hsumrev : p d = ∑ y ∈ sset, w y • y := by
+    simpa using hsum.symm
+  simpa [hsum''] using hsumrev
+
+
 /-- Oriented area decomposition for a triangle and a point. -/
 lemma det3_sum {N : ℕ} (p : Fin N → Plane) (a b c d : Fin N) :
     det3 p a b d + det3 p b c d + det3 p c a d = det3 p a b c := by
@@ -234,6 +269,59 @@ lemma det3_ne_zero_of_generalPositionFn {N : ℕ} (p : Fin N → Plane)
     exact h0 ⟨hu0, hv0⟩
 
 
+/-- If a point lies in the convex hull of a triangle, its orientation with the base edge matches
+    the triangle's orientation. -/
+lemma det3_same_sign_of_convexHull_triangle {N : ℕ} (p : Fin N → Plane)
+    (hp : GeneralPositionFn p) {a b c d : Fin N}
+    (habc : Distinct3 a b c) (habd : Distinct3 a b d)
+    (hd : p d ∈ convexHull ℝ ({p a, p b, p c} : Set Plane)) :
+    decide (det3 p a b d > 0) = decide (det3 p a b c > 0) := by
+  classical
+  -- Distinct points among the triangle vertices.
+  let p' : Fin 3 → Plane := ![p a, p b, p c]
+  have hAff : AffineIndependent ℝ p' :=
+    hp a b c habc.1 habc.2.1 habc.2.2
+  have hInj : Function.Injective p' :=
+    AffineIndependent.injective (k := ℝ) hAff
+  have hab : p a ≠ p b := by
+    intro h
+    have : (0 : Fin 3) = 1 := by
+      apply hInj
+      simpa [p'] using h
+    exact (by decide : (0 : Fin 3) ≠ 1) this
+  have hac : p a ≠ p c := by
+    intro h
+    have : (0 : Fin 3) = 2 := by
+      apply hInj
+      simpa [p'] using h
+    exact (by decide : (0 : Fin 3) ≠ 2) this
+  have hbc : p b ≠ p c := by
+    intro h
+    have : (1 : Fin 3) = 2 := by
+      apply hInj
+      simpa [p'] using h
+    exact (by decide : (1 : Fin 3) ≠ 2) this
+  rcases convexHull_triangle_affine_combination (p := p) hab hac hbc hd with
+    ⟨r, s, t, hr, hs, ht, hsum, hdcomb⟩
+  have hdet : det3 p a b d = t * det3 p a b c :=
+    det3_affine_combination (p := p) a b c d r s t hsum hdcomb
+  have hne_d : det3 p a b d ≠ 0 :=
+    det3_ne_zero_of_generalPositionFn (p := p) hp habd
+  have hne_c : det3 p a b c ≠ 0 :=
+    det3_ne_zero_of_generalPositionFn (p := p) hp habc
+  have htpos : t > 0 := by
+    have htne : t ≠ 0 := by
+      intro ht0
+      have : det3 p a b d = 0 := by simp [hdet, ht0]
+      exact hne_d this
+    exact lt_of_le_of_ne ht (by simpa [eq_comm] using htne)
+  have hiff : det3 p a b d > 0 ↔ det3 p a b c > 0 := by
+    simpa [hdet] using (mul_pos_iff_of_pos_left htpos)
+  by_cases hpos : det3 p a b c > 0
+  · have hpos' : det3 p a b d > 0 := hiff.mpr hpos
+    simp [hpos, hpos']
+  · have hpos' : ¬ det3 p a b d > 0 := (not_congr hiff).mpr hpos
+    simp [hpos, hpos']
 /-- The (abstract) order type induced by a labelled point configuration in general position. -/
 def orderTypeOfPoints {N : ℕ} (p : Fin N → Plane) (hp : GeneralPositionFn p) :
     ErdosSzekeres.OrderType N :=
