@@ -42,6 +42,57 @@ lemma det3_plucker {N : ℕ} (p : Fin N → Plane) (a b c d e : Fin N) :
   simpa [det3] using
     (det2_plucker (p b - p a) (p c - p a) (p d - p a) (p e - p a))
 
+
+/-- `det2` is linear in the right argument. -/
+lemma det2_add_right (u v w : Plane) :
+    det2 u (v + w) = det2 u v + det2 u w := by
+  simp [det2]
+  ring
+
+/-- `det2` is homogeneous in the right argument. -/
+lemma det2_smul_right (u v : Plane) (t : ℝ) :
+    det2 u (t • v) = t * det2 u v := by
+  simp [det2]
+  ring
+
+/-- The determinant of a vector with itself is zero. -/
+lemma det2_self (u : Plane) : det2 u u = 0 := by
+  simp [det2]
+  ring
+
+/-- Affine combination on the third point scales `det3` by the barycentric weight. -/
+lemma det3_affine_combination {N : ℕ} (p : Fin N → Plane) (a b c d : Fin N)
+    (r s t : ℝ) (hsum : r + s + t = 1)
+    (hd : p d = r • p a + s • p b + t • p c) :
+    det3 p a b d = t * det3 p a b c := by
+  -- Expand `p d - p a` using the affine combination.
+  have hda : p d - p a = s • (p b - p a) + t • (p c - p a) := by
+    ext i
+    have hdi := congrArg (fun f => f i) hd
+    have hsum' : r - 1 = -(s + t) := by linarith
+    -- Coordinate-wise arithmetic.
+    calc
+      (p d - p a) i
+          = r * p a i + s * p b i + t * p c i - p a i := by
+              simp [hdi]
+      _ = (r - 1) * p a i + s * p b i + t * p c i := by ring
+      _ = (-(s + t)) * p a i + s * p b i + t * p c i := by simp [hsum']
+      _ = s * (p b i - p a i) + t * (p c i - p a i) := by ring
+      _ = (s • (p b - p a) + t • (p c - p a)) i := by
+              simp
+  -- Linearity of `det2` in the second argument and cancellation of the self term.
+  calc
+    det3 p a b d
+        = det2 (p b - p a) (s • (p b - p a) + t • (p c - p a)) := by
+            simp [det3, hda]
+    _ = det2 (p b - p a) (s • (p b - p a)) + det2 (p b - p a) (t • (p c - p a)) := by
+            simp [det2_add_right]
+    _ = s * det2 (p b - p a) (p b - p a) + t * det2 (p b - p a) (p c - p a) := by
+            simp [det2_smul_right]
+    _ = t * det2 (p b - p a) (p c - p a) := by
+            simp [det2_self]
+    _ = t * det3 p a b c := by
+            simp [det3]
 /-- Oriented area decomposition for a triangle and a point. -/
 lemma det3_sum {N : ℕ} (p : Fin N → Plane) (a b c d : Fin N) :
     det3 p a b d + det3 p b c d + det3 p c a d = det3 p a b c := by
