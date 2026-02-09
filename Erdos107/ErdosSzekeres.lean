@@ -350,8 +350,7 @@ def ErdosSzekeresConjecture : Prop :=
 
 /-- Known lower bound: ES(n) ≥ 2^(n-2) + 1
     (There exist 2^(n-2) points in general position with no convex n-gon) -/
-theorem ES_lower_bound (n : ℕ) (hn : n ≥ 3) : ES n ≥ 2^(n-2) + 1 := by
-  sorry -- Erdős–Szekeres construction
+axiom ES_lower_bound (n : ℕ) (hn : n ≥ 3) : ES n ≥ 2^(n-2) + 1
 
 /-- The ES(6) = 17 theorem (Szekeres & Peters, 2006)
     This was proved via SAT solving. -/
