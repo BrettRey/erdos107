@@ -166,9 +166,20 @@ def CCTransitivity {N : ℕ} (ot : OrderType N) : Prop :=
 def CCSystem {N : ℕ} (ot : OrderType N) : Prop :=
   CCInteriority ot ∧ CCTransitivity ot
 
+/-- CC-interiority follows from chirotope + acyclic axioms. -/
+axiom ccInteriority_of_chirotope_acyclic {N : ℕ} {ot : OrderType N} :
+    OrderType.IsChirotope ot → OrderType.Acyclic ot → CCInteriority ot
+
+/-- CC-transitivity follows from chirotope + acyclic axioms. -/
+axiom ccTransitivity_of_chirotope_acyclic {N : ℕ} {ot : OrderType N} :
+    OrderType.IsChirotope ot → OrderType.Acyclic ot → CCTransitivity ot
+
 /-- CC-systems are implied by the chirotope + acyclic axioms. -/
-axiom ccSystem_of_chirotope_acyclic {N : ℕ} {ot : OrderType N} :
-    OrderType.IsChirotope ot → OrderType.Acyclic ot → CCSystem ot
+theorem ccSystem_of_chirotope_acyclic {N : ℕ} {ot : OrderType N} :
+    OrderType.IsChirotope ot → OrderType.Acyclic ot → CCSystem ot := by
+  intro hch hacyc
+  exact ⟨ccInteriority_of_chirotope_acyclic hch hacyc,
+    ccTransitivity_of_chirotope_acyclic hch hacyc⟩
 
 /-- For real points in general position, the induced order type satisfies CC-system axioms. -/
 theorem orderTypeOfPoints_ccSystem {N : ℕ} (p : Fin N → Plane)
