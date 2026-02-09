@@ -25,6 +25,7 @@ import Mathlib.Data.Real.Basic
 import Mathlib.Analysis.Convex.Segment
 import Mathlib.LinearAlgebra.AffineSpace.FiniteDimensional
 import Mathlib.Tactic
+import Mathlib.Data.Fintype.EquivFin
 
 open Set
 open scoped Pointwise
@@ -317,6 +318,85 @@ def ESWitness (n N : ℕ) : Prop :=
         Finset.GeneralPosition s →
         ∃ t : Finset Plane, t ⊆ s ∧ t.card = n ∧ Finset.ConvexPosition t
 
+
+/-- Convert a labelled witness into a finset witness. -/
+lemma ESWitness_of_ESWitnessFn {n N : ℕ} (h : ESWitnessFn n N) : ESWitness n N := by
+  classical
+  intro s hs hgp
+  have hcard : Fintype.card s = N := by
+    simpa [Fintype.card_coe] using hs
+  let e : Fin N ≃ s := (Fintype.equivFinOfCardEq hcard).symm
+  let p : Fin N → Plane := fun i => (e i : Plane)
+  have hp : GeneralPositionFn p := by
+    have hgp' : GeneralPosition (s : Set Plane) := by
+      simpa [Finset.GeneralPosition] using hgp
+    intro i j k hij hik hjk
+    have hij' : p i ≠ p j := by
+      intro hEq
+      have hEq' : e i = e j := by
+        apply Subtype.ext
+        simpa [p] using hEq
+      exact hij (e.injective hEq')
+    have hik' : p i ≠ p k := by
+      intro hEq
+      have hEq' : e i = e k := by
+        apply Subtype.ext
+        simpa [p] using hEq
+      exact hik (e.injective hEq')
+    have hjk' : p j ≠ p k := by
+      intro hEq
+      have hEq' : e j = e k := by
+        apply Subtype.ext
+        simpa [p] using hEq
+      exact hjk (e.injective hEq')
+    exact hgp' (a := p i) (b := p j) (c := p k)
+      (by simpa [p] using (e i).property)
+      (by simpa [p] using (e j).property)
+      (by simpa [p] using (e k).property)
+      hij' hik' hjk'
+  rcases h p hp with ⟨f, hfconv⟩
+  let t : Finset Plane := (Finset.univ.image (fun i : Fin n => (e (f i) : Plane)))
+  have ht_subset : t ⊆ s := by
+    intro x hx
+    rcases Finset.mem_image.1 hx with ⟨i, hi, rfl⟩
+    exact (e (f i)).property
+  have ht_card : t.card = n := by
+    have hinj : Function.Injective (fun i : Fin n => (e (f i) : Plane)) := by
+      intro i j hEq
+      apply f.injective
+      apply e.injective
+      apply Subtype.ext
+      simpa using hEq
+    simpa [t] using
+      (Finset.card_image_of_injective (s := (Finset.univ : Finset (Fin n))) hinj)
+  have ht_conv : Finset.ConvexPosition t := by
+    have hset : (↑t : Set Plane) = Set.range (fun i : Fin n => (e (f i) : Plane)) := by
+      ext x; constructor
+      · intro hx
+        have hx' : x ∈ t := by simpa using hx
+        rcases Finset.mem_image.1 hx' with ⟨i, hi, rfl⟩
+        exact ⟨i, rfl⟩
+      · rintro ⟨i, rfl⟩
+        have : (e (f i) : Plane) ∈ t := by
+          refine Finset.mem_image.2 ?_
+          exact ⟨i, by simpa using (Finset.mem_univ i), rfl⟩
+        simpa using this
+    have hinj : Function.Injective (fun i : Fin n => (e (f i) : Plane)) := by
+      intro i j hEq
+      apply f.injective
+      apply e.injective
+      apply Subtype.ext
+      simpa using hEq
+    have hci_range :
+        ConvexIndependent ℝ (fun p : Set.range (fun i : Fin n => (e (f i) : Plane)) => (p : Plane)) :=
+      (Function.Injective.convexIndependent_iff_set hinj).2 hfconv
+    have hcp_range : ConvexPosition (Set.range (fun i : Fin n => (e (f i) : Plane))) := by
+      simpa [ConvexPosition] using hci_range
+    have hcp_t : ConvexPosition (t : Set Plane) := by
+      simpa [hset] using hcp_range
+    simpa [Finset.ConvexPosition] using hcp_t
+  exact ⟨t, ht_subset, ht_card, ht_conv⟩
+
 lemma ESWitness.mono {n N N' : ℕ} (hNN' : N ≤ N') (h : ESWitness n N) : ESWitness n N' := by
   classical
   intro s hsN' hgp
@@ -351,10 +431,6 @@ def ErdosSzekeresConjecture : Prop :=
 /-- Known lower bound: ES(n) ≥ 2^(n-2) + 1
     (There exist 2^(n-2) points in general position with no convex n-gon) -/
 axiom ES_lower_bound (n : ℕ) (hn : n ≥ 3) : ES n ≥ 2^(n-2) + 1
-
-/-- The ES(6) = 17 theorem (Szekeres & Peters, 2006)
-    This was proved via SAT solving. -/
-axiom ES_six : ES 6 = 17
 
 /-- The ES(7) = 33 conjecture -/
 axiom ES_seven : ES 7 = 33

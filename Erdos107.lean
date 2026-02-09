@@ -4,3 +4,4 @@ import Erdos107.OrderType
 import Erdos107.SATSpec
 import Erdos107.SATCNF
 import Erdos107.Bridge
+import Erdos107.ES6

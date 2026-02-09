@@ -604,6 +604,18 @@ theorem geom_counterexample_imp_CNF_satisfiable {n N : ℕ} (blocked : List (Fin
   exact SATCNF.satCounterexample_imp_satisfiable blocked
     (geom_counterexample_imp_SATCounterexample hgeom)
 
+/-- If the SAT CNF is unsatisfiable, then every `N`-point configuration
+    in general position has an `n`-point convex subset. -/
+theorem ESWitnessFn_of_unsat {n N : ℕ} (blocked : List (Fin n ↪ Fin N))
+    (hunsat : ¬ Satisfiable (SATCNF.satSpecCNF n N blocked)) : ESWitnessFn n N := by
+  intro p hp
+  by_contra hconv
+  have hgeom : ∃ p : Fin N → Plane, GeneralPositionFn p ∧ ¬ HasConvexSubset (n := n) p :=
+    ⟨p, hp, hconv⟩
+  have hsat : Satisfiable (SATCNF.satSpecCNF n N blocked) :=
+    geom_counterexample_imp_CNF_satisfiable (n := n) (N := N) (blocked := blocked) hgeom
+  exact hunsat hsat
+
 /-- If there is no chirotope-level counterexample, then there is no geometric counterexample. -/
 theorem no_OM3Counterexample_imp_no_geom_counterexample {n N : ℕ} :
     ¬ OrderType.OM3Counterexample n N →
