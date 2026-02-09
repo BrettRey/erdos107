@@ -1,4 +1,5 @@
 import Mathlib.Data.Set.Insert
+import Erdos107.ConvexAlternating
 import Erdos107.Bridge
 import Erdos107.OrderType
 
@@ -371,10 +372,74 @@ lemma not_convexIndependent_imp_mem_convexHull_univ {q : Fin 6 → Plane} :
   exact ⟨i, hmono hi⟩
 
 /-- Carathéodory (triangle form) for points in the plane. -/
-axiom mem_convexHull_triangle_of_mem_convexHull {N : ℕ} {p : Fin N → Plane} {i : Fin N} :
+theorem mem_convexHull_triangle_of_mem_convexHull {N : ℕ} {p : Fin N → Plane} {i : Fin N}
+    (hN : 4 ≤ N) :
     p i ∈ convexHull ℝ (p '' (Set.univ \ {i})) →
       ∃ a b c : Fin N, Distinct4 i a b c ∧
-        p i ∈ convexHull ℝ ({p a, p b, p c} : Set Plane)
+        p i ∈ convexHull ℝ ({p a, p b, p c} : Set Plane) := by
+  classical
+  intro hi
+  obtain ⟨u, hu_sub, hu_card, hi_u⟩ :=
+    mem_convexHull_image_finset_card_le_three (p := p)
+      (s := (Set.univ \ {i})) (i := i) hi
+  have hu_sub' : u ⊆ Finset.univ.erase i := by
+    intro x hx
+    have hx' : x ∈ (Set.univ \ {i}) := hu_sub (by simpa using hx)
+    have hxne : x ≠ i := hx'.2
+    simp [Finset.mem_erase, hxne]
+  have hcard_t : 3 ≤ (Finset.univ.erase i).card := by
+    have hcard : (Finset.univ.erase i).card = N - 1 := by
+      simpa using (Finset.card_erase (s := Finset.univ) (a := i))
+    have h' : 3 ≤ N - 1 := by
+      have h'' : 4 - 1 ≤ N - 1 := Nat.sub_le_sub_right hN 1
+      simpa using h''
+    simpa [hcard] using h'
+  obtain ⟨v, huv, hvu, hvcard⟩ :=
+    Finset.exists_subsuperset_card_eq (s := u) (t := Finset.univ.erase i) (n := 3)
+      hu_sub' (by simpa using hu_card) (by simpa using hcard_t)
+  obtain ⟨a, b, c, hab, hac, hbc, hv_eq⟩ := (Finset.card_eq_three).1 (by simpa using hvcard)
+  have ha_mem : a ∈ Finset.univ.erase i := hvu (by simp [hv_eq])
+  have hb_mem : b ∈ Finset.univ.erase i := hvu (by simp [hv_eq])
+  have hc_mem : c ∈ Finset.univ.erase i := hvu (by simp [hv_eq])
+  have hai' : a ≠ i := by simpa using ha_mem
+  have hbi' : b ≠ i := by simpa using hb_mem
+  have hci' : c ≠ i := by simpa using hc_mem
+  have hsubset : p '' (↑u : Set (Fin N)) ⊆ p '' (↑v : Set (Fin N)) := by
+    intro x hx
+    rcases hx with ⟨j, hj, rfl⟩
+    have hj' : j ∈ v := huv (by simpa using hj)
+    exact ⟨j, by simpa using hj', rfl⟩
+  have hi_v : p i ∈ convexHull ℝ (p '' (↑v : Set (Fin N))) :=
+    convexHull_mono hsubset hi_u
+  have hset : p '' ({a, b, c} : Set (Fin N)) = ({p a, p b, p c} : Set Plane) := by
+    ext x
+    constructor
+    · rintro ⟨y, hy, rfl⟩
+      have hy' : y = a ∨ y = b ∨ y = c := by
+        simpa using hy
+      rcases hy' with rfl | rfl | rfl <;> simp
+    · intro hx
+      have hx' : x = p a ∨ x = p b ∨ x = p c := by
+        simpa using hx
+      rcases hx' with hx' | hx' | hx'
+      · refine ⟨a, ?_, ?_⟩
+        · simp
+        · simpa [hx']
+      · refine ⟨b, ?_, ?_⟩
+        · simp
+        · simpa [hx']
+      · refine ⟨c, ?_, ?_⟩
+        · simp
+        · simpa [hx']
+  have htri : p i ∈ convexHull ℝ ({p a, p b, p c} : Set Plane) := by
+    have hi_v' : p i ∈ convexHull ℝ (p '' ({a, b, c} : Set (Fin N))) := by
+      simpa [hv_eq] using hi_v
+    simpa [hset] using hi_v'
+  refine ⟨a, b, c, ?_, htri⟩
+  refine ⟨?_, ?_, ?_, hab, hac, hbc⟩
+  · simpa [eq_comm] using hai'
+  · simpa [eq_comm] using hbi'
+  · simpa [eq_comm] using hci'
 
 /-- Soundness bridge (geometric): no convex 6-gon implies inside-triangle clauses. -/
 theorem noConvex6_imp_No6GonClause {N : ℕ} (p : Fin N → Plane)
@@ -386,7 +451,7 @@ theorem noConvex6_imp_No6GonClause {N : ℕ} (p : Fin N → Plane)
     intro hci
     exact hno ⟨f, hci⟩
   rcases not_convexIndependent_imp_mem_convexHull_univ (q := p ∘ f) hnot with ⟨i, hi⟩
-  rcases mem_convexHull_triangle_of_mem_convexHull (p := p ∘ f) (i := i) hi with
+  rcases mem_convexHull_triangle_of_mem_convexHull (p := p ∘ f) (i := i) (hN := by decide) hi with
     ⟨a, b, c, hdist, htri⟩
   have hdist_f : Distinct4 (f i) (f a) (f b) (f c) := Distinct4.map f hdist
   have habc : Distinct3 (f a) (f b) (f c) := by
