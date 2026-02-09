@@ -67,7 +67,85 @@ def SignotopeAxioms {N : ℕ} (ot : OrderType N) : Prop :=
     ((ot.σ a b c = false) ∨ (ot.σ a b d = true) ∨ (ot.σ a c d = false) ∨ (ot.σ b c d = true)) ∧
     ((ot.σ a b c = true) ∨ (ot.σ a b d = false) ∨ (ot.σ a c d = true) ∨ (ot.σ b c d = false))
 
-/-- CC-system interiority axiom. -/
+
+/-- Distinctness for an increasing 4-tuple. -/
+lemma distinct4_of_lt {N : ℕ} {a b c d : Fin N} (hab : a < b) (hbc : b < c) (hcd : c < d) :
+    Distinct4 a b c d := by
+  refine ⟨ne_of_lt hab, ?_, ?_, ne_of_lt hbc, ?_, ne_of_lt hcd⟩
+  · exact ne_of_lt (lt_trans hab hbc)
+  · exact ne_of_lt (lt_trans (lt_trans hab hbc) hcd)
+  · exact ne_of_lt (lt_trans hbc hcd)
+
+/-- Acyclicity implies the signotope axioms (for any order type). -/
+lemma acyclic_imp_signotope {N : ℕ} (ot : OrderType N) (hacyc : OrderType.Acyclic ot) :
+    SignotopeAxioms ot := by
+  intro a b c d hab hbc hcd
+  have hdist0 : Distinct4 a b c d := distinct4_of_lt hab hbc hcd
+  rcases hdist0 with ⟨hab', hac', had', hbc', hbd', hcd'⟩
+  have hdist' : Distinct4 a b d c := by
+    exact ⟨hab', had', hac', hbd', hbc', by simpa [eq_comm] using hcd'⟩
+  have hacyc1 :
+      (ot.σ a b c = false) ∨ (ot.σ d b c = true) ∨ (ot.σ a d c = true) ∨ (ot.σ a b d = true) :=
+    hacyc a b c d ⟨hab', hac', had', hbc', hbd', hcd'⟩
+  have hacyc2 :
+      (ot.σ a b d = false) ∨ (ot.σ c b d = true) ∨ (ot.σ a c d = true) ∨ (ot.σ a b c = true) :=
+    hacyc a b d c hdist'
+  -- rewrite pieces of hacyc1
+  have hdbc : ot.σ d b c = ot.σ b c d := by
+    have hdbc' : Distinct3 d b c := by
+      exact ⟨by symm; exact hbd', by symm; exact hcd', hbc'⟩
+    simpa using (ot.cycle (i := d) (j := b) (k := c) hdbc')
+  have hadc : ot.σ a d c = ! ot.σ a c d := by
+    have hadc' : Distinct3 a d c := by
+      exact ⟨had', hac', by symm; exact hcd'⟩
+    have h1 := ot.swap12 (i := a) (j := d) (k := c) hadc'
+    have h2 : ot.σ d a c = ot.σ a c d := by
+      have hdac : Distinct3 d a c := by
+        exact ⟨by symm; exact had', by symm; exact hcd', hac'⟩
+      simpa using (ot.cycle (i := d) (j := a) (k := c) hdac)
+    simpa [h2] using h1
+  have hcl1 :
+      (ot.σ a b c = false) ∨
+      (ot.σ a b d = true) ∨
+      (ot.σ a c d = false) ∨
+      (ot.σ b c d = true) := by
+    -- reorder to match SignotopeAxioms clause
+    -- hacyc1: ¬σ(abc) ∨ σ(dbc) ∨ σ(adc) ∨ σ(abd)
+    -- after rewriting dbc/ad c
+    -- we want: ¬σ(abc) ∨ σ(abd) ∨ ¬σ(acd) ∨ σ(bcd)
+    have h1' :
+        (ot.σ a b c = false) ∨
+        (ot.σ b c d = true) ∨
+        (ot.σ a c d = false) ∨
+        (ot.σ a b d = true) := by
+      simpa [hdbc, hadc] using hacyc1
+    -- reorder disjunctions
+    simpa [or_left_comm, or_comm, or_assoc] using h1'
+  -- rewrite pieces of hacyc2
+  have hcbd : ot.σ c b d = ! ot.σ b c d := by
+    have hcbd' : Distinct3 c b d := by
+      exact ⟨by symm; exact hbc', hcd', hbd'⟩
+    simpa using (ot.swap12 (i := c) (j := b) (k := d) hcbd')
+  have hcl2 :
+      (ot.σ a b c = true) ∨
+      (ot.σ a b d = false) ∨
+      (ot.σ a c d = true) ∨
+      (ot.σ b c d = false) := by
+    have h2' :
+        (ot.σ a b d = false) ∨
+        (ot.σ b c d = false) ∨
+        (ot.σ a c d = true) ∨
+        (ot.σ a b c = true) := by
+      simpa [hcbd] using hacyc2
+    simpa [or_left_comm, or_comm, or_assoc] using h2'
+  exact ⟨hcl1, hcl2⟩
+
+/-- For real points in general position, the induced order type is a signotope. -/
+lemma orderTypeOfPoints_signotope {N : ℕ} (p : Fin N → Plane)
+    (hp : GeneralPositionFn p) :
+    SignotopeAxioms (orderTypeOfPoints p hp) := by
+  exact acyclic_imp_signotope (ot := orderTypeOfPoints p hp) (orderTypeOfPoints_acyclic p hp)
+
 def CCInteriority {N : ℕ} (ot : OrderType N) : Prop :=
   ∀ p q r t : Fin N, Distinct4 p q r t →
     ot.σ t q r = true → ot.σ p t r = true → ot.σ p q t = true → ot.σ p q r = true
@@ -87,11 +165,6 @@ def CCTransitivity {N : ℕ} (ot : OrderType N) : Prop :=
 /-- Full CC-system: interiority + transitivity. -/
 def CCSystem {N : ℕ} (ot : OrderType N) : Prop :=
   CCInteriority ot ∧ CCTransitivity ot
-
-/-- For real points in general position and x-order, the induced order type is a signotope. -/
-axiom orderTypeOfPoints_signotope {N : ℕ} (p : Fin N → Plane)
-    (hp : GeneralPositionFn p) (hx : XOrdered p) :
-    SignotopeAxioms (orderTypeOfPoints p hp)
 
 /-- For real points in general position, the induced order type satisfies CC-system axioms. -/
 axiom orderTypeOfPoints_ccSystem {N : ℕ} (p : Fin N → Plane)
