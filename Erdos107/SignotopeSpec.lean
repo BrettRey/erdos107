@@ -190,10 +190,124 @@ theorem orderTypeOfPoints_ccInteriority {N : ℕ} (p : Fin N → Plane)
   simpa [orderTypeOfPoints] using hpos
 
 /-- Geometric transitivity for oriented areas in the plane. -/
-axiom det3_transitivity {N : ℕ} (p : Fin N → Plane)
+theorem det3_transitivity {N : ℕ} (p : Fin N → Plane)
     {t s a b c : Fin N} :
     det3 p t s a > 0 → det3 p t s b > 0 → det3 p t s c > 0 →
-    det3 p t a b > 0 → det3 p t b c > 0 → det3 p t a c > 0
+    det3 p t a b > 0 → det3 p t b c > 0 → det3 p t a c > 0 := by
+  classical
+  intro htsa htsb htsc htab htbc
+  set u : Plane := p s - p t
+  set v : Plane := p a - p t
+  set w : Plane := p b - p t
+  set z : Plane := p c - p t
+  have huv : det2 u v > 0 := by simpa [det3, u, v] using htsa
+  have huw : det2 u w > 0 := by simpa [det3, u, w] using htsb
+  have huz : det2 u z > 0 := by simpa [det3, u, z] using htsc
+  have hvw : det2 v w > 0 := by simpa [det3, v, w] using htab
+  have hwz : det2 w z > 0 := by simpa [det3, w, z] using htbc
+  set D : ℝ := u 0 * u 0 + u 1 * u 1
+  have hDne : D ≠ 0 := by
+    intro hD0
+    have h0 : u 0 = 0 ∧ u 1 = 0 := by
+      have : u 0 * u 0 + u 1 * u 1 = 0 := by simpa [D] using hD0
+      exact (mul_self_add_mul_self_eq_zero.mp this)
+    have hu : u = 0 := by
+      ext i; fin_cases i <;> simp [h0.1, h0.2]
+    have : det2 u v = 0 := by simp [hu, det2]
+    exact (ne_of_gt huv) this
+  have hDpos : 0 < D := by
+    have hDnonneg : 0 ≤ D := by
+      have h0 : 0 ≤ u 0 * u 0 := by nlinarith
+      have h1 : 0 ≤ u 1 * u 1 := by nlinarith
+      nlinarith [h0, h1]
+    exact lt_of_le_of_ne hDnonneg (Ne.symm hDne)
+  let acoef (x : Plane) : ℝ := (u 0 * x 0 + u 1 * x 1) / D
+  let bcoef (x : Plane) : ℝ := det2 u x / D
+  have hdet2_uv : det2 u v = D * bcoef v := by
+    dsimp [bcoef]
+    calc
+      det2 u v = (D * det2 u v) / D := by
+        symm; exact (mul_div_cancel_left₀ (det2 u v) hDne)
+      _ = D * (det2 u v / D) := by
+        simpa using (mul_div_assoc D (det2 u v) D)
+  have hdet2_uw : det2 u w = D * bcoef w := by
+    dsimp [bcoef]
+    calc
+      det2 u w = (D * det2 u w) / D := by
+        symm; exact (mul_div_cancel_left₀ (det2 u w) hDne)
+      _ = D * (det2 u w / D) := by
+        simpa using (mul_div_assoc D (det2 u w) D)
+  have hdet2_uz : det2 u z = D * bcoef z := by
+    dsimp [bcoef]
+    calc
+      det2 u z = (D * det2 u z) / D := by
+        symm; exact (mul_div_cancel_left₀ (det2 u z) hDne)
+      _ = D * (det2 u z / D) := by
+        simpa using (mul_div_assoc D (det2 u z) D)
+  have hdet2_vw : det2 v w = D * acoef v * bcoef w - D * acoef w * bcoef v := by
+    dsimp [acoef, bcoef, det2]
+    field_simp [hDne]
+    simp [D]
+    ring_nf
+  have hdet2_wz : det2 w z = D * acoef w * bcoef z - D * acoef z * bcoef w := by
+    dsimp [acoef, bcoef, det2]
+    field_simp [hDne]
+    simp [D]
+    ring_nf
+  have hbv : 0 < bcoef v := by
+    have : 0 < D * bcoef v := by simpa [hdet2_uv] using huv
+    exact (mul_pos_iff_of_pos_left hDpos).1 this
+  have hbw : 0 < bcoef w := by
+    have : 0 < D * bcoef w := by simpa [hdet2_uw] using huw
+    exact (mul_pos_iff_of_pos_left hDpos).1 this
+  have hbz : 0 < bcoef z := by
+    have : 0 < D * bcoef z := by simpa [hdet2_uz] using huz
+    exact (mul_pos_iff_of_pos_left hDpos).1 this
+  have hvw' : 0 < acoef v * bcoef w - acoef w * bcoef v := by
+    have htmp : 0 < D * acoef v * bcoef w - D * acoef w * bcoef v :=
+      by simpa [hdet2_vw] using hvw
+    have htmp' : 0 < D * (acoef v * bcoef w - acoef w * bcoef v) := by
+      -- factor out D
+      have : D * acoef v * bcoef w - D * acoef w * bcoef v =
+          D * (acoef v * bcoef w - acoef w * bcoef v) := by ring_nf
+      simpa [this] using htmp
+    exact (mul_pos_iff_of_pos_left hDpos).1 htmp'
+  have hwz' : 0 < acoef w * bcoef z - acoef z * bcoef w := by
+    have htmp : 0 < D * acoef w * bcoef z - D * acoef z * bcoef w :=
+      by simpa [hdet2_wz] using hwz
+    have htmp' : 0 < D * (acoef w * bcoef z - acoef z * bcoef w) := by
+      have : D * acoef w * bcoef z - D * acoef z * bcoef w =
+          D * (acoef w * bcoef z - acoef z * bcoef w) := by ring_nf
+      simpa [this] using htmp
+    exact (mul_pos_iff_of_pos_left hDpos).1 htmp'
+  have hvw_lt : acoef w * bcoef v < acoef v * bcoef w := by linarith [hvw']
+  have hwz_lt : acoef z * bcoef w < acoef w * bcoef z := by linarith [hwz']
+  have hvw_mul : acoef w * bcoef v * bcoef z < acoef v * bcoef w * bcoef z := by
+    have h := mul_lt_mul_of_pos_right hvw_lt hbz
+    simpa [mul_assoc] using h
+  have hwz_mul : acoef z * bcoef w * bcoef v < acoef w * bcoef v * bcoef z := by
+    have h := mul_lt_mul_of_pos_right hwz_lt hbv
+    simpa [mul_assoc, mul_left_comm, mul_comm] using h
+  have hchain : acoef z * bcoef w * bcoef v < acoef v * bcoef w * bcoef z :=
+    lt_trans hwz_mul hvw_mul
+  have hfinal : acoef z * bcoef v < acoef v * bcoef z := by
+    have hchain' : bcoef w * (acoef z * bcoef v) < bcoef w * (acoef v * bcoef z) := by
+      simpa [mul_assoc, mul_left_comm, mul_comm] using hchain
+    exact (lt_of_mul_lt_mul_left hchain' (show 0 ≤ bcoef w from le_of_lt hbw))
+  have htac' : 0 < acoef v * bcoef z - acoef z * bcoef v := by
+    linarith [hfinal]
+  have hdet2_vz : det2 v z = D * acoef v * bcoef z - D * acoef z * bcoef v := by
+    dsimp [acoef, bcoef, det2]
+    field_simp [hDne]
+    simp [D]
+    ring_nf
+  have : det2 v z > 0 := by
+    have : 0 < D * acoef v * bcoef z - D * acoef z * bcoef v := by
+      have : 0 < D * (acoef v * bcoef z - acoef z * bcoef v) :=
+        (mul_pos_iff_of_pos_left hDpos).2 htac'
+      simpa [mul_sub, mul_left_comm, mul_assoc, mul_comm] using this
+    simpa [hdet2_vz] using this
+  simpa [det3, v, z] using this
 
 /-- CC-transitivity for real points in general position. -/
 theorem orderTypeOfPoints_ccTransitivity {N : ℕ} (p : Fin N → Plane)
