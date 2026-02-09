@@ -57,4 +57,56 @@ lemma insideTriangle_of_convexHull_triangle {N : ℕ} (p : Fin N → Plane)
       simpa [h3'] using h3
     simpa [orderTypeOfPoints] using h3''
 
+/-- Index order agrees with increasing x-coordinate. -/
+def XOrdered {N : ℕ} (p : Fin N → Plane) : Prop :=
+  ∀ {i j : Fin N}, i < j → p i 0 < p j 0
+
+/-- Signotope axioms (CNF form) for every increasing 4-tuple. -/
+def SignotopeAxioms {N : ℕ} (ot : OrderType N) : Prop :=
+  ∀ a b c d : Fin N, a < b → b < c → c < d →
+    ((ot.σ a b c = false) ∨ (ot.σ a b d = true) ∨ (ot.σ a c d = false) ∨ (ot.σ b c d = true)) ∧
+    ((ot.σ a b c = true) ∨ (ot.σ a b d = false) ∨ (ot.σ a c d = true) ∨ (ot.σ b c d = false))
+
+/-- CC-system interiority axiom. -/
+def CCInteriority {N : ℕ} (ot : OrderType N) : Prop :=
+  ∀ p q r t : Fin N, Distinct4 p q r t →
+    ot.σ t q r = true → ot.σ p t r = true → ot.σ p q t = true → ot.σ p q r = true
+
+/-- Pairwise distinctness for a 5-tuple. -/
+def Distinct5 {N : ℕ} (a b c d e : Fin N) : Prop :=
+  a ≠ b ∧ a ≠ c ∧ a ≠ d ∧ a ≠ e ∧
+  b ≠ c ∧ b ≠ d ∧ b ≠ e ∧
+  c ≠ d ∧ c ≠ e ∧ d ≠ e
+
+/-- CC-system transitivity axiom. -/
+def CCTransitivity {N : ℕ} (ot : OrderType N) : Prop :=
+  ∀ t s p q r : Fin N, Distinct5 t s p q r →
+    ot.σ t s p = true → ot.σ t s q = true → ot.σ t s r = true →
+    ot.σ t p q = true → ot.σ t q r = true → ot.σ t p r = true
+
+/-- Full CC-system: interiority + transitivity. -/
+def CCSystem {N : ℕ} (ot : OrderType N) : Prop :=
+  CCInteriority ot ∧ CCTransitivity ot
+
+/-- For real points in general position and x-order, the induced order type is a signotope. -/
+axiom orderTypeOfPoints_signotope {N : ℕ} (p : Fin N → Plane)
+    (hp : GeneralPositionFn p) (hx : XOrdered p) :
+    SignotopeAxioms (orderTypeOfPoints p hp)
+
+/-- For real points in general position, the induced order type satisfies CC-system axioms. -/
+axiom orderTypeOfPoints_ccSystem {N : ℕ} (p : Fin N → Plane)
+    (hp : GeneralPositionFn p) : CCSystem (orderTypeOfPoints p hp)
+
+/-- No-convex-6-gon condition in inside-triangle form (for a fixed order type). -/
+def No6GonClause {N : ℕ} (ot : OrderType N) : Prop :=
+  ∀ f : Fin 6 ↪ Fin N,
+    ∃ i a b c : Fin 6, Distinct4 i a b c ∧
+      InsideTriangle ot (f a) (f b) (f c) (f i)
+
+/-- Soundness bridge (geometric): no convex 6-gon implies inside-triangle clauses. -/
+axiom noConvex6_imp_No6GonClause {N : ℕ} (p : Fin N → Plane)
+    (hp : GeneralPositionFn p) :
+    (¬ HasConvexSubset (n := 6) p) → No6GonClause (orderTypeOfPoints p hp)
+
+
 end ErdosSzekeres
