@@ -189,16 +189,32 @@ theorem orderTypeOfPoints_ccInteriority {N : ℕ} (p : Fin N → Plane)
     linarith [hsum, hijk', h1, h2]
   simpa [orderTypeOfPoints] using hpos
 
-/-- CC-transitivity follows from chirotope + acyclic axioms. -/
-axiom ccTransitivity_of_chirotope_acyclic {N : ℕ} {ot : OrderType N} :
-    OrderType.IsChirotope ot → OrderType.Acyclic ot → CCTransitivity ot
+/-- Geometric transitivity for oriented areas in the plane. -/
+axiom det3_transitivity {N : ℕ} (p : Fin N → Plane)
+    {t s a b c : Fin N} :
+    det3 p t s a > 0 → det3 p t s b > 0 → det3 p t s c > 0 →
+    det3 p t a b > 0 → det3 p t b c > 0 → det3 p t a c > 0
+
+/-- CC-transitivity for real points in general position. -/
+theorem orderTypeOfPoints_ccTransitivity {N : ℕ} (p : Fin N → Plane)
+    (hp : GeneralPositionFn p) : CCTransitivity (orderTypeOfPoints p hp) := by
+  classical
+  intro t s a b c hdist hts_a hts_b hts_c htab htbc
+  have hts_a' : det3 p t s a > 0 := by simpa [orderTypeOfPoints] using hts_a
+  have hts_b' : det3 p t s b > 0 := by simpa [orderTypeOfPoints] using hts_b
+  have hts_c' : det3 p t s c > 0 := by simpa [orderTypeOfPoints] using hts_c
+  have htab' : det3 p t a b > 0 := by simpa [orderTypeOfPoints] using htab
+  have htbc' : det3 p t b c > 0 := by simpa [orderTypeOfPoints] using htbc
+  have htac' : det3 p t a c > 0 :=
+    det3_transitivity (p := p) (t := t) (s := s) (a := a) (b := b) (c := c)
+      hts_a' hts_b' hts_c' htab' htbc'
+  simpa [orderTypeOfPoints] using htac'
 
 /-- For real points in general position, the induced order type satisfies CC-system axioms. -/
 theorem orderTypeOfPoints_ccSystem {N : ℕ} (p : Fin N → Plane)
     (hp : GeneralPositionFn p) : CCSystem (orderTypeOfPoints p hp) := by
   refine ⟨orderTypeOfPoints_ccInteriority (p := p) (hp := hp), ?_⟩
-  exact ccTransitivity_of_chirotope_acyclic (orderTypeOfPoints_isChirotope p hp)
-    (orderTypeOfPoints_acyclic p hp)
+  exact orderTypeOfPoints_ccTransitivity (p := p) (hp := hp)
 
 /-- No-convex-6-gon condition in inside-triangle form (for a fixed order type). -/
 def No6GonClause {N : ℕ} (ot : OrderType N) : Prop :=
