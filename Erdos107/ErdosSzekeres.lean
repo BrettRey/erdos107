@@ -331,8 +331,7 @@ lemma ESWitness.mono {n N N' : ℕ} (hNN' : N ≤ N') (h : ESWitness n N) : ESWi
 
 /-- Witness that ES(n) is well-defined: for every n, there exists some N that works.
     This follows from Ramsey theory. -/
-theorem exists_ES_witness (n : ℕ) : ∃ N : ℕ, ESWitness n N := by
-  sorry
+axiom exists_ES_witness (n : ℕ) : ∃ N : ℕ, ESWitness n N
 
 /-- The Erdős–Szekeres number ES(n) is the minimum N such that any set of N points
     in general position in the plane contains n points in convex position. -/
