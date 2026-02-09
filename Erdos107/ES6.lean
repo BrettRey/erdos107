@@ -8,7 +8,7 @@ namespace ErdosSzekeres
 theorem ES_upper_bound_6 : ES 6 ≤ 17 := by
   classical
   have hwFn : ESWitnessFn 6 17 :=
-    ESWitnessFn_of_unsat (n := 6) (N := 17) (blocked := blocked_6_17) unsat_6_17
+    signotope_unsat_imp_ESWitnessFn_6_17 signotope_unsat_6_17
   have hw : ESWitness 6 17 := ESWitness_of_ESWitnessFn hwFn
   exact Nat.find_min' (exists_ES_witness 6) hw
 
