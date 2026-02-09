@@ -166,9 +166,15 @@ def CCTransitivity {N : ℕ} (ot : OrderType N) : Prop :=
 def CCSystem {N : ℕ} (ot : OrderType N) : Prop :=
   CCInteriority ot ∧ CCTransitivity ot
 
+/-- CC-systems are implied by the chirotope + acyclic axioms. -/
+axiom ccSystem_of_chirotope_acyclic {N : ℕ} {ot : OrderType N} :
+    OrderType.IsChirotope ot → OrderType.Acyclic ot → CCSystem ot
+
 /-- For real points in general position, the induced order type satisfies CC-system axioms. -/
-axiom orderTypeOfPoints_ccSystem {N : ℕ} (p : Fin N → Plane)
-    (hp : GeneralPositionFn p) : CCSystem (orderTypeOfPoints p hp)
+theorem orderTypeOfPoints_ccSystem {N : ℕ} (p : Fin N → Plane)
+    (hp : GeneralPositionFn p) : CCSystem (orderTypeOfPoints p hp) :=
+  ccSystem_of_chirotope_acyclic (orderTypeOfPoints_isChirotope p hp)
+    (orderTypeOfPoints_acyclic p hp)
 
 /-- No-convex-6-gon condition in inside-triangle form (for a fixed order type). -/
 def No6GonClause {N : ℕ} (ot : OrderType N) : Prop :=
@@ -176,10 +182,82 @@ def No6GonClause {N : ℕ} (ot : OrderType N) : Prop :=
     ∃ i a b c : Fin 6, Distinct4 i a b c ∧
       InsideTriangle ot (f a) (f b) (f c) (f i)
 
+/-- Distinctness is preserved by embeddings. -/
+lemma Distinct4.map {N M : ℕ} (f : Fin N ↪ Fin M) {a b c d : Fin N} :
+    Distinct4 a b c d → Distinct4 (f a) (f b) (f c) (f d) := by
+  intro h
+  refine ⟨?_, ?_, ?_, ?_, ?_, ?_⟩
+  · intro h'; exact h.1 (f.injective h')
+  · intro h'; exact h.2.1 (f.injective h')
+  · intro h'; exact h.2.2.1 (f.injective h')
+  · intro h'; exact h.2.2.2.1 (f.injective h')
+  · intro h'; exact h.2.2.2.2.1 (f.injective h')
+  · intro h'; exact h.2.2.2.2.2 (f.injective h')
+
+/-- If a 6-point configuration is not convex independent, one point is in the convex hull
+    of the other five. -/
+lemma not_convexIndependent_imp_mem_convexHull_univ {q : Fin 6 → Plane} :
+    ¬ ConvexIndependent ℝ q →
+      ∃ i : Fin 6, q i ∈ convexHull ℝ (q '' (Set.univ \ {i})) := by
+  classical
+  intro hnot
+  have h :=
+    (convexIndependent_iff_notMem_convexHull_diff (p := q) (𝕜 := ℝ)).not.mp hnot
+  push_neg at h
+  rcases h with ⟨i, s, hi⟩
+  have hsubset : s \ {i} ⊆ (Set.univ \ {i}) := by
+    intro x hx
+    exact ⟨by trivial, hx.2⟩
+  have himage : q '' (s \ {i}) ⊆ q '' (Set.univ \ {i}) := by
+    intro x hx
+    rcases hx with ⟨y, hy, rfl⟩
+    exact ⟨y, hsubset hy, rfl⟩
+  have hmono : convexHull ℝ (q '' (s \ {i})) ⊆ convexHull ℝ (q '' (Set.univ \ {i})) :=
+    convexHull_mono himage
+  exact ⟨i, hmono hi⟩
+
+/-- Carathéodory (triangle form) for points in the plane. -/
+axiom mem_convexHull_triangle_of_mem_convexHull {N : ℕ} {p : Fin N → Plane} {i : Fin N} :
+    p i ∈ convexHull ℝ (p '' (Set.univ \ {i})) →
+      ∃ a b c : Fin N, Distinct4 i a b c ∧
+        p i ∈ convexHull ℝ ({p a, p b, p c} : Set Plane)
+
 /-- Soundness bridge (geometric): no convex 6-gon implies inside-triangle clauses. -/
-axiom noConvex6_imp_No6GonClause {N : ℕ} (p : Fin N → Plane)
+theorem noConvex6_imp_No6GonClause {N : ℕ} (p : Fin N → Plane)
     (hp : GeneralPositionFn p) :
-    (¬ HasConvexSubset (n := 6) p) → No6GonClause (orderTypeOfPoints p hp)
+    (¬ HasConvexSubset (n := 6) p) → No6GonClause (orderTypeOfPoints p hp) := by
+  classical
+  intro hno f
+  have hnot : ¬ ConvexIndependent ℝ (p ∘ f) := by
+    intro hci
+    exact hno ⟨f, hci⟩
+  rcases not_convexIndependent_imp_mem_convexHull_univ (q := p ∘ f) hnot with ⟨i, hi⟩
+  rcases mem_convexHull_triangle_of_mem_convexHull (p := p ∘ f) (i := i) hi with
+    ⟨a, b, c, hdist, htri⟩
+  have hdist_f : Distinct4 (f i) (f a) (f b) (f c) := Distinct4.map f hdist
+  have habc : Distinct3 (f a) (f b) (f c) := by
+    refine ⟨hdist_f.2.2.2.1, hdist_f.2.2.2.2.1, hdist_f.2.2.2.2.2⟩
+  have habi : Distinct3 (f a) (f b) (f i) := by
+    refine ⟨hdist_f.2.2.2.1, ?_, ?_⟩
+    · simpa using hdist_f.1.symm
+    · simpa using hdist_f.2.1.symm
+  have hbci : Distinct3 (f b) (f c) (f i) := by
+    refine ⟨hdist_f.2.2.2.2.2, ?_, ?_⟩
+    · simpa using hdist_f.2.1.symm
+    · simpa using hdist_f.2.2.1.symm
+  have hcai : Distinct3 (f c) (f a) (f i) := by
+    refine ⟨?_, ?_, ?_⟩
+    · simpa using hdist_f.2.2.2.2.1.symm
+    · simpa using hdist_f.2.2.1.symm
+    · simpa using hdist_f.1.symm
+  have htri' :
+      p (f i) ∈ convexHull ℝ ({p (f a), p (f b), p (f c)} : Set Plane) := by
+    simpa [Function.comp] using htri
+  have hinside :
+      InsideTriangle (orderTypeOfPoints p hp) (f a) (f b) (f c) (f i) :=
+    insideTriangle_of_convexHull_triangle (p := p) (hp := hp)
+      (a := f a) (b := f b) (c := f c) (d := f i) habc habi hbci hcai htri'
+  exact ⟨i, a, b, c, hdist, hinside⟩
 
 
 end ErdosSzekeres
