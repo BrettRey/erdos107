@@ -57,6 +57,35 @@ noncomputable def altσ {n : ℕ} (i j k : Fin n) : Bool :=
     classical
     exact decide (CyclicTriple i j k)
 
+/-- The cyclic order predicate is invariant under cyclic shift. -/
+lemma CyclicTriple.cycle_left {n : ℕ} {i j k : Fin n} :
+    CyclicTriple i j k → CyclicTriple j k i := by
+  intro h
+  rcases h with h | h | h
+  · exact Or.inr <| Or.inr h
+  · exact Or.inl h
+  · exact Or.inr <| Or.inl h
+
+/-- The cyclic order predicate is invariant under cyclic shift (right). -/
+lemma CyclicTriple.cycle_right {n : ℕ} {i j k : Fin n} :
+    CyclicTriple i j k → CyclicTriple k i j := by
+  intro h
+  have h' : CyclicTriple j k i :=
+    CyclicTriple.cycle_left (i := i) (j := j) (k := k) h
+  exact CyclicTriple.cycle_left (i := j) (j := k) (k := i) h'
+
+/-- `altσ` is invariant under cyclic shift. -/
+lemma altσ_cycle_left {n : ℕ} (i j k : Fin n) :
+    altσ i j k = altσ j k i := by
+  classical
+  by_cases h : CyclicTriple i j k
+  · have h' : CyclicTriple j k i := CyclicTriple.cycle_left (i := i) (j := j) (k := k) h
+    simp [altσ, h, h']
+  · have h' : ¬ CyclicTriple j k i := by
+      intro h'
+      exact h (CyclicTriple.cycle_right (i := j) (j := k) (k := i) h')
+    simp [altσ, h, h']
+
 /-- A labelled order type is alternating if its triple-sign function matches `altσ`
     on all distinct triples. -/
 def IsAlternating {n : ℕ} (ot : ErdosSzekeres.OrderType n) : Prop :=
