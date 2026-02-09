@@ -1,10 +1,8 @@
 import Erdos107.ErdosSzekeres
 import Erdos107.SATCNF
+import Erdos107.Blocked_6_17
 
 namespace ErdosSzekeres
-
-/-- Blocked 6-gon orders used in the UNSAT certificate for `N = 17`. -/
-axiom blocked_6_17 : List (Fin 6 ↪ Fin 17)
 
 /-- UNSAT certificate: the SAT CNF for `N = 17` is unsatisfiable. -/
 axiom unsat_6_17 : ¬ Satisfiable (SATCNF.satSpecCNF 6 17 blocked_6_17)
