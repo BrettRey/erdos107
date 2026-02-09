@@ -72,6 +72,19 @@ lemma mem_convexHull_image_finset_card_le_three {N : ℕ} {p : Fin N → Plane} 
     convexHull_mono ht_sub hx_t
   exact ⟨u, hu_sub, hcard_u, hx_u⟩
 
+
+
+/-- For convex-independent indexed points, convex-hull membership equals index membership. -/
+lemma convexIndependent_mem_convexHull_iff {N : ℕ} {p : Fin N → Plane}
+    (hp : ConvexIndependent ℝ p) (s : Set (Fin N)) (i : Fin N) :
+    p i ∈ convexHull ℝ (p '' s) ↔ i ∈ s := by
+  simpa using (ConvexIndependent.mem_convexHull_iff (p := p) hp s i)
+
+/-- A convex-independent point is not in the convex hull of the other indices. -/
+lemma convexIndependent_not_mem_convexHull_diff {N : ℕ} {p : Fin N → Plane}
+    (hp : ConvexIndependent ℝ p) (i : Fin N) (s : Set (Fin N)) :
+    p i ∉ convexHull ℝ (p '' (s \ {i})) := by
+  exact (convexIndependent_iff_notMem_convexHull_diff (p := p)).1 hp i s
 end
 
 end ErdosSzekeres
